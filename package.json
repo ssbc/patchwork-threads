@@ -1,6 +1,6 @@
 {
   "name": "patchwork-threads",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Library for Patchwork's thread data-structures",
   "main": "index.js",
   "scripts": {
