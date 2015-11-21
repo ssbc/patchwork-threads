@@ -264,7 +264,9 @@ exports.getLastThreadPost = function (thread) {
   if (!thread.related)
     return msg
   thread.related.forEach(function (r) {
-    if (r.value.content.type === 'post')
+    var c = r.value.content
+    var root = mlib.link(c.root)
+    if (c.type === 'post' && root && root.link == thread.key && r.value.timestamp > msg.value.timestamp)
       msg = r
   })
   return msg
