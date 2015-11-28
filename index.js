@@ -65,7 +65,8 @@ exports.flattenThread = function (thread) {
   // 2. ordering thread.related such that replies are always after their immediate parent
   // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
   // 4. detecting missing parents and weaving in "hey this is missing" objects
-  var msgIds = new Set([thread.key])
+  var availableIds = new Set([thread.key].concat(thread.related.map(function (m) { return m.key })))
+  var addedIds = new Set([thread.key])
   var msgs = [thread]
   ;(thread.related||[]).forEach(flattenAndReorderReplies)
   var msgsDup = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
@@ -74,15 +75,16 @@ exports.flattenThread = function (thread) {
   return msgs
 
   function insertReply (msg) {
-    if (msgIds.has(msg.key))
+    if (addedIds.has(msg.key))
       return // skip duplicates
     var branch = mlib.link(msg.value.content.branch)
     var branchIsRoot = (thread.key === branch.link)
 
-    // dont insert if the parent post (branch) hasnt been inserted yet
-    // (the message will be processed again as a .related of its branch)
+    // dont insert if the parent post (branch) hasnt been inserted yet, but will be
+    // (the message will be processed again as a .related of its parent)
     // this ensures children dont order before their parent
-    if (!(branchIsRoot || msgIds.has(branch.link)))
+    // but, if the parent isnt in the available IDs, it's not in the local cache and we should go ahead and add
+    if (!(branchIsRoot || addedIds.has(branch.link)) && availableIds.has(branch.link))
       return
 
     // iterate the existing messages...
@@ -98,12 +100,12 @@ exports.flattenThread = function (thread) {
       // now insert in order of asserted timestamp
       if (msgs[i].value.timestamp > msg.value.timestamp) {
         msgs.splice(i, 0, msg)
-        msgIds.add(msg.key)
+        addedIds.add(msg.key)
         return
       }
     }
     msgs.push(msg)
-    msgIds.add(msg.key)
+    addedIds.add(msg.key)
   }
   function flattenAndReorderReplies (msg) {
     if (msg.value.content.type == 'post' && isaReplyTo(msg, thread)) {
@@ -117,14 +119,14 @@ exports.flattenThread = function (thread) {
     for (var i=0; i < msgs.length; i++) {
       if (msgs[i].key === parentKey) {
         msgs.splice(i+1, 0, { key: msg.key, isMention: true, value: msg.value })
-        msgIds.add(msg.key)
+        addedIds.add(msg.key)
         return
       }
     }
   }
   function weaveMentions (parent) {
     ;(parent.related||[]).forEach(function (msg) { 
-      if (msgIds.has(msg.key))
+      if (addedIds.has(msg.key))
         return // skip duplicates
       // insert if a mention to its parent
       if (msg.value.content.type == 'post' && relationsTo(msg, parent).indexOf('mentions') >= 0)
@@ -137,7 +139,7 @@ exports.flattenThread = function (thread) {
     for (var i=0; i < msgs.length; i++) {
       if (msgs[i].key === childKey) {
         msgs.splice(i, 0, { key: parentKey, isNotFound: true })
-        msgIds.add(parentKey)
+        addedIds.add(parentKey)
         return
       }
     }
@@ -147,7 +149,7 @@ exports.flattenThread = function (thread) {
       return // ignore the mentions
 
     var branch = mlib.link(msg.value.content.branch, 'msg')
-    if (branch && !msgIds.has(branch.link)) {
+    if (branch && !addedIds.has(branch.link)) {
       if (i === 0) {
         // topmost post
         // user may be looking at a reply - just display a link
