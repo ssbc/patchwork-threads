@@ -7,6 +7,32 @@ var defaults  = require('secure-scuttlebutt/defaults')
 var ssbKeys   = require('ssb-keys')
 var threadlib = require('../')
 
+tape('flattenThread correctly works without replies', function (t) {
+
+  var db = sublevel(level('test-patchwork-threads-flatten-noreplies', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    if (err) throw err
+
+    // fetch and flatten the thread
+    threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+      if (err) throw err
+
+      var msgs = threadlib.flattenThread(thread)
+      t.equal(msgs.length, 1)
+      // ensure msgs were interpretted correctly
+      t.equal(msgs[0].key, msgA.key)
+      t.end()
+    })
+  })
+})
+
 tape('flattenThread correctly orders despite bad timestamps', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-order', {

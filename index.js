@@ -65,10 +65,11 @@ exports.flattenThread = function (thread) {
   // 2. ordering the list such that replies are always after their immediate parent
   // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
   // 4. detecting missing parents and weaving in "hey this is missing" objects
-  var availableIds = new Set([thread.key].concat(thread.related.map(function (m) { return m.key })))
+  var related = (thread.related||[])
+  var availableIds = new Set([thread.key].concat(related.map(function (m) { return m.key })))
   var addedIds = new Set([thread.key])
   var msgs = [thread]
-  ;(thread.related||[]).forEach(flattenAndReorderReplies)
+  related.forEach(flattenAndReorderReplies)
   var msgsDup = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
   msgsDup.forEach(weaveMentions)
   msgsDup.forEach(weaveMissingParents)
