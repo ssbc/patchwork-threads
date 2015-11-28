@@ -58,6 +58,109 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
   })
 }
 
+exports.flattenThread = function (thread) {
+  // build the thread into a flat, and correctly ordered, list
+  // this means 
+  // 1. putting all renderable messages (root, replies, and mentions) in a flat msgs list (so no recursion is required to render)
+  // 2. ordering thread.related such that replies are always after their immediate parent
+  // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
+  // 4. detecting missing parents and weaving in "hey this is missing" objects
+  var msgIds = new Set([thread.key])
+  var msgs = [thread]
+  ;(thread.related||[]).forEach(flattenAndReorderReplies)
+  var msgsDup = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
+  msgsDup.forEach(weaveMentions)
+  msgsDup.forEach(weaveMissingParents)
+  return msgs
+
+  function insertReply (msg) {
+    if (msgIds.has(msg.key))
+      return // skip duplicates
+    var branch = mlib.link(msg.value.content.branch)
+    var branchIsRoot = (thread.key === branch.link)
+
+    // dont insert if the parent post (branch) hasnt been inserted yet
+    // (the message will be processed again as a .related of its branch)
+    // this ensures children dont order before their parent
+    if (!(branchIsRoot || msgIds.has(branch.link)))
+      return
+
+    // iterate the existing messages...
+    var hasFoundBranch = branchIsRoot
+    for (var i=0; i < msgs.length; i++) {
+      // look for the parent (branch) first
+      if (!hasFoundBranch) {
+        if (msgs[i].key === branch.link)
+          hasFoundBranch = true
+        continue
+      }
+
+      // now insert in order of asserted timestamp
+      if (msgs[i].value.timestamp > msg.value.timestamp) {
+        msgs.splice(i, 0, msg)
+        msgIds.add(msg.key)
+        return
+      }
+    }
+    msgs.push(msg)
+    msgIds.add(msg.key)
+  }
+  function flattenAndReorderReplies (msg) {
+    if (msg.value.content.type == 'post' && isaReplyTo(msg, thread)) {
+      insertReply(msg)
+      ;(msg.related||[]).forEach(flattenAndReorderReplies)
+    }
+  }
+
+  function insertMention (msg, parentKey) {
+    // find parent and insert after
+    for (var i=0; i < msgs.length; i++) {
+      if (msgs[i].key === parentKey) {
+        msgs.splice(i+1, 0, { key: msg.key, isMention: true, value: msg.value })
+        msgIds.add(msg.key)
+        return
+      }
+    }
+  }
+  function weaveMentions (parent) {
+    ;(parent.related||[]).forEach(function (msg) { 
+      if (msgIds.has(msg.key))
+        return // skip duplicates
+      // insert if a mention to its parent
+      if (msg.value.content.type == 'post' && relationsTo(msg, parent).indexOf('mentions') >= 0)
+        insertMention(msg, parent.key)
+    })
+  }
+
+  function insertMissingParent (parentKey, childKey) {
+    // find child and insert before
+    for (var i=0; i < msgs.length; i++) {
+      if (msgs[i].key === childKey) {
+        msgs.splice(i, 0, { key: parentKey, isNotFound: true })
+        msgIds.add(parentKey)
+        return
+      }
+    }
+  }
+  function weaveMissingParents (msg, i) {
+    if (msg.isMention)
+      return // ignore the mentions
+
+    var branch = mlib.link(msg.value.content.branch, 'msg')
+    if (branch && !msgIds.has(branch.link)) {
+      if (i === 0) {
+        // topmost post
+        // user may be looking at a reply - just display a link
+        msgs.unshift({ key: branch.link, isLink: true })
+      } else {
+        // one of the replies
+        // if the parent isnt somewhere in the thread, then we dont have it
+        insertMissingParent(branch.link, msg.key)
+      }
+    }
+  }
+}
+
 exports.getParentPostThread = function (ssb, mid, opts, cb) {
   exports.fetchThreadRootID(ssb, mid, function (err, mid) {
     if (err) return cb(err)
@@ -270,4 +373,23 @@ exports.getLastThreadPost = function (thread) {
       msg = r
   })
   return msg
+}
+
+// TODO move these to mlib
+
+function isaReplyTo (a, b) {
+  var ac = a.value.content
+  return (ac.root && mlib.link(ac.root).link == b.key || ac.branch && mlib.link(ac.branch).link == b.key)
+}
+
+function relationsTo (a, b) {
+  var rels = []
+  var ac = a.value.content
+  for (var k in ac) {
+    mlib.links(ac[k]).forEach(l => {
+      if (l.link === b.key)
+        rels.push(k)
+    })
+  }
+  return rels
 }
