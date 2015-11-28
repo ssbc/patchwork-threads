@@ -130,7 +130,7 @@ exports.flattenThread = function (thread) {
       if (addedIds.has(msg.key))
         return // skip duplicates
       // insert if a mention to its parent
-      if (msg.value.content.type == 'post' && relationsTo(msg, parent).indexOf('mentions') >= 0)
+      if (msg.value.content.type == 'post' && isaMentionTo(msg, parent))
         insertMention(msg, parent.key)
     })
   }
@@ -378,21 +378,11 @@ exports.getLastThreadPost = function (thread) {
   return msg
 }
 
-// TODO move these to mlib
-
 function isaReplyTo (a, b) {
-  var ac = a.value.content
-  return (ac.root && mlib.link(ac.root).link == b.key || ac.branch && mlib.link(ac.branch).link == b.key)
+  var rels = mlib.relationsTo(a, b)
+  return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
 }
 
-function relationsTo (a, b) {
-  var rels = []
-  var ac = a.value.content
-  for (var k in ac) {
-    mlib.links(ac[k]).forEach(l => {
-      if (l.link === b.key)
-        rels.push(k)
-    })
-  }
-  return rels
+function isaMentionTo (a, b) {
+  return mlib.relationsTo(a, b).indexOf('mentions') >= 0
 }

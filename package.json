@@ -25,12 +25,11 @@
   "dependencies": {
     "multicb": "^1.2.0",
     "pull-stream": "^2.28.4",
-    "ssb-msgs": "^5.1.0"
+    "ssb-msgs": "^5.2.0"
   },
   "devDependencies": {
     "level-sublevel": "^6.5.2",
     "level-test": "^2.0.1",
-    "multicb": "^1.2.0",
     "secure-scuttlebutt": "^15.0.0",
     "ssb-keys": "^4.0.6",
     "tape": "~4.0.0"

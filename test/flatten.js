@@ -165,11 +165,9 @@ tape('flattenThread correctly detects missing parents', function (t) {
           // delete the first reply
           // 0 & 1 are msgB (0 for root and 1 for branch) delete them both
           thread.related.splice(0, 2)
-          console.log(thread.related[0].key)
 
           // now flatten
           var msgs = threadlib.flattenThread(thread)
-          console.log(msgs[0].key)
           t.equal(msgs.length, 3)
           // ensure msgs were interpretted correctly
           t.equal(msgs[0].key, msgA.key)
