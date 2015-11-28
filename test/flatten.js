@@ -7,17 +7,6 @@ var defaults  = require('secure-scuttlebutt/defaults')
 var ssbKeys   = require('ssb-keys')
 var threadlib = require('../')
 
-function customTimeCreateMsg (keys, timestamp, content) {
-  return ssbKeys.signObj(keys, {
-    previous: null,
-    author: keys.id,
-    sequence: 1,
-    timestamp: timestamp,
-    hash: 'sha256',
-    content: content,
-  })
-}
-
 tape('flattenThread correctly orders despite bad timestamps', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-order', {
@@ -69,3 +58,64 @@ tape('flattenThread correctly orders despite bad timestamps', function (t) {
     })
   })
 })
+
+tape('flattenThread correctly weaves mentions into the thread', function (t) {
+
+  var db = sublevel(level('test-patchwork-threads-flatten-mentions', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+  var bob = ssb.createFeed(ssbKeys.generate())
+  var carla = ssb.createFeed(ssbKeys.generate())
+
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    if (err) throw err
+
+    // first reply
+    bob.add({ type: 'post', text: 'b', root: msgA.key, branch: msgA.key }, function (err, msgB) {
+      if (err) throw err
+
+      // mention
+      carla.add({ type: 'post', text: 'c', mentions: msgB.key }, function (err, msgC) {
+        if (err) throw err
+
+        // second reply, AND a mention
+        alice.add({ type: 'post', text: 'd', root: msgA.key, branch: msgB.key, mentions: msgA.key }, function (err, msgD) {
+          if (err) throw err
+
+          // fetch and flatten the thread
+          threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+            if (err) throw err
+
+            var msgs = threadlib.flattenThread(thread)
+            t.equal(msgs.length, 4)
+            // ensure msgs were interpretted correctly
+            t.equal(msgs[0].key, msgA.key)
+            t.equal(!!msgs[0].isMention, false)
+            t.equal(msgs[1].key, msgB.key) 
+            t.equal(!!msgs[1].isMention, false)
+            t.equal(msgs[2].key, msgC.key)
+            t.equal(!!msgs[2].isMention, true) // is a mention!
+            t.equal(msgs[3].key, msgD.key)
+            t.equal(!!msgs[3].isMention, false) // is NOT a mention!
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
+function customTimeCreateMsg (keys, timestamp, content) {
+  return ssbKeys.signObj(keys, {
+    previous: null,
+    author: keys.id,
+    sequence: 1,
+    timestamp: timestamp,
+    hash: 'sha256',
+    content: content,
+  })
+}
