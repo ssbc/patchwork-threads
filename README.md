@@ -14,6 +14,9 @@ threadlib.getPostThread (ssb, mid, opts, cb)
 // `opts` used in fetchThreadData
 threadlib.getParentPostThread (ssb, mid, opts, cb)
 
+// get a flattened msg-list of the thread, ready for rendering
+threadlib.flattenThread (thread)
+
 // get top-level thread structure (no replies of replies)
 // `opts` used in fetchThreadData
 threadlib.getPostSummary (ssb, mid, opts, cb)

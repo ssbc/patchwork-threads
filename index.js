@@ -62,7 +62,7 @@ exports.flattenThread = function (thread) {
   // build the thread into a flat, and correctly ordered, list
   // this means 
   // 1. putting all renderable messages (root, replies, and mentions) in a flat msgs list (so no recursion is required to render)
-  // 2. ordering thread.related such that replies are always after their immediate parent
+  // 2. ordering the list such that replies are always after their immediate parent
   // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
   // 4. detecting missing parents and weaving in "hey this is missing" objects
   var availableIds = new Set([thread.key].concat(thread.related.map(function (m) { return m.key })))
