@@ -58,6 +58,112 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
   })
 }
 
+exports.flattenThread = function (thread) {
+  // build the thread into a flat, and correctly ordered, list
+  // this means 
+  // 1. putting all renderable messages (root, replies, and mentions) in a flat msgs list (so no recursion is required to render)
+  // 2. ordering the list such that replies are always after their immediate parent
+  // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
+  // 4. detecting missing parents and weaving in "hey this is missing" objects
+  var related = (thread.related||[])
+  var availableIds = new Set([thread.key].concat(related.map(function (m) { return m.key })))
+  var addedIds = new Set([thread.key])
+  var msgs = [thread]
+  related.forEach(flattenAndReorderReplies)
+  var msgsDup = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
+  msgsDup.forEach(weaveMentions)
+  msgsDup.forEach(weaveMissingParents)
+  return msgs
+
+  function insertReply (msg) {
+    if (addedIds.has(msg.key))
+      return // skip duplicates
+    var branch = mlib.link(msg.value.content.branch)
+    var branchIsRoot = (thread.key === branch.link)
+
+    // dont insert if the parent post (branch) hasnt been inserted yet, but will be
+    // (the message will be processed again as a .related of its parent)
+    // this ensures children dont order before their parent
+    // but, if the parent isnt in the available IDs, it's not in the local cache and we should go ahead and add
+    if (!(branchIsRoot || addedIds.has(branch.link)) && availableIds.has(branch.link))
+      return
+
+    // iterate the existing messages...
+    var hasFoundBranch = branchIsRoot
+    for (var i=0; i < msgs.length; i++) {
+      // look for the parent (branch) first
+      if (!hasFoundBranch) {
+        if (msgs[i].key === branch.link)
+          hasFoundBranch = true
+        continue
+      }
+
+      // now insert in order of asserted timestamp
+      if (msgs[i].value.timestamp > msg.value.timestamp) {
+        msgs.splice(i, 0, msg)
+        addedIds.add(msg.key)
+        return
+      }
+    }
+    msgs.push(msg)
+    addedIds.add(msg.key)
+  }
+  function flattenAndReorderReplies (msg) {
+    if (msg.value.content.type == 'post' && isaReplyTo(msg, thread)) {
+      insertReply(msg)
+      ;(msg.related||[]).forEach(flattenAndReorderReplies)
+    }
+  }
+
+  function insertMention (msg, parentKey) {
+    // find parent and insert after
+    for (var i=0; i < msgs.length; i++) {
+      if (msgs[i].key === parentKey) {
+        msgs.splice(i+1, 0, { key: msg.key, isMention: true, value: msg.value })
+        addedIds.add(msg.key)
+        return
+      }
+    }
+  }
+  function weaveMentions (parent) {
+    ;(parent.related||[]).forEach(function (msg) { 
+      if (addedIds.has(msg.key))
+        return // skip duplicates
+      // insert if a mention to its parent
+      if (msg.value.content.type == 'post' && isaMentionTo(msg, parent))
+        insertMention(msg, parent.key)
+    })
+  }
+
+  function insertMissingParent (parentKey, childKey) {
+    // find child and insert before
+    for (var i=0; i < msgs.length; i++) {
+      if (msgs[i].key === childKey) {
+        msgs.splice(i, 0, { key: parentKey, isNotFound: true })
+        addedIds.add(parentKey)
+        return
+      }
+    }
+  }
+  function weaveMissingParents (msg, i) {
+    if (msg.isMention)
+      return // ignore the mentions
+
+    var branch = mlib.link(msg.value.content.branch, 'msg')
+    if (branch && !addedIds.has(branch.link)) {
+      if (i === 0) {
+        // topmost post
+        // user may be looking at a reply - just display a link
+        msgs.unshift({ key: branch.link, isLink: true })
+      } else {
+        // one of the replies
+        // if the parent isnt somewhere in the thread, then we dont have it
+        insertMissingParent(branch.link, msg.key)
+      }
+    }
+  }
+}
+
 exports.getParentPostThread = function (ssb, mid, opts, cb) {
   exports.fetchThreadRootID(ssb, mid, function (err, mid) {
     if (err) return cb(err)
@@ -270,4 +376,13 @@ exports.getLastThreadPost = function (thread) {
       msg = r
   })
   return msg
+}
+
+function isaReplyTo (a, b) {
+  var rels = mlib.relationsTo(a, b)
+  return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
+}
+
+function isaMentionTo (a, b) {
+  return mlib.relationsTo(a, b).indexOf('mentions') >= 0
 }
