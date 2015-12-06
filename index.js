@@ -328,12 +328,13 @@ exports.markThreadRead = function (ssb, thread, cb) {
     if (msg == thread) {
       // always mark the root read, to update the API's isread index
     } else {
-      // is this message already read?
       if (msg.isRead)
-        return cb2() // skip
+        return cb2() // already marked read
+      if (msg.value.content.type != 'post')
+        return cb2() // not a post
+      if (!isaReplyTo(msg, thread))
+        return cb2() // not a reply
     }
-    if (msg.value.content.type != 'post')
-      return cb2() // not a post
 
     ssb.patchwork.markRead(msg.key, function (err, isRead) {
       msg.isRead = true
