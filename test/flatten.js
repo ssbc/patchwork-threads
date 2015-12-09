@@ -7,7 +7,7 @@ var defaults  = require('secure-scuttlebutt/defaults')
 var ssbKeys   = require('ssb-keys')
 var threadlib = require('../')
 
-tape('flattenThread correctly works without replies', function (t) {
+tape('flattenThread works without replies', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-noreplies', {
     valueEncoding: defaults.codec
@@ -29,6 +29,46 @@ tape('flattenThread correctly works without replies', function (t) {
       // ensure msgs were interpretted correctly
       t.equal(msgs[0].key, msgA.key)
       t.end()
+    })
+  })
+})
+
+tape('flattenThread works when branch link is missing', function (t) {
+
+  var db = sublevel(level('test-patchwork-threads-flatten-nobranch', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+  var bob = ssb.createFeed(ssbKeys.generate())
+  var carla = ssb.createFeed(ssbKeys.generate())
+
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    if (err) throw err
+
+    // first reply
+    bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
+      if (err) throw err
+
+      // second reply
+      alice.add({ type: 'post', text: 'c', root: msgA.key, branch: msgB.key }, function (err, msgC) {
+        if (err) throw err
+
+        // fetch and flatten the thread
+        threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+          if (err) throw err
+
+          var msgs = threadlib.flattenThread(thread)
+          t.equal(msgs.length, 3)
+          // ensure msgs were interpretted correctly
+          t.equal(msgs[0].key, msgA.key)
+          t.equal(msgs[1].key, msgB.key) 
+          t.equal(msgs[2].key, msgC.key)
+          t.end()
+        })
+      })
     })
   })
 })
@@ -85,7 +125,7 @@ tape('flattenThread correctly orders despite bad timestamps', function (t) {
   })
 })
 
-tape('flattenThread correctly weaves mentions into the thread', function (t) {
+tape('flattenThread weaves mentions into the thread', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-mentions', {
     valueEncoding: defaults.codec
@@ -135,7 +175,7 @@ tape('flattenThread correctly weaves mentions into the thread', function (t) {
   })
 })
 
-tape('flattenThread correctly detects missing parents', function (t) {
+tape('flattenThread detects missing parents', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-missing-parents', {
     valueEncoding: defaults.codec

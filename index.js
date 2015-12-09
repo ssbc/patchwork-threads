@@ -78,7 +78,7 @@ exports.flattenThread = function (thread) {
   function insertReply (msg) {
     if (addedIds.has(msg.key))
       return // skip duplicates
-    var branch = mlib.link(msg.value.content.branch)
+    var branch = mlib.link(msg.value.content.branch) || mlib.link(msg.value.content.root)
     var branchIsRoot = (thread.key === branch.link)
 
     // dont insert if the parent post (branch) hasnt been inserted yet, but will be
