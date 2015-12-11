@@ -90,7 +90,7 @@ exports.flattenThread = function (thread) {
 
     // iterate the existing messages...
     var hasFoundBranch = branchIsRoot
-    for (var i=0; i < msgs.length; i++) {
+    for (var i=1; i < msgs.length; i++) { // start at 1 - root is always first
       // look for the parent (branch) first
       if (!hasFoundBranch) {
         if (msgs[i].key === branch.link)

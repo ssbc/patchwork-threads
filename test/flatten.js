@@ -125,6 +125,54 @@ tape('flattenThread correctly orders despite bad timestamps', function (t) {
   })
 })
 
+tape('flattenThread correctly orders despite bad timestamps, pt 2', function (t) {
+
+  var db = sublevel(level('test-patchwork-threads-flatten-order-2', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssbKeys.generate()
+  var bob = ssbKeys.generate()
+  var carla = ssbKeys.generate()
+  var dan = ssbKeys.generate()
+
+  // load test thread into ssb
+  // root with TS ahead by an hour
+  ssb.add(customTimeCreateMsg(alice, Date.now() + 1000*60*60, { type: 'post', text: 'a' }), function (err, msgA) {
+    if (err) throw err
+
+    // reply with correct TS
+    ssb.add(customTimeCreateMsg(bob, Date.now(), { type: 'post', text: 'b', root: msgA.key, branch: msgA.key }), function (err, msgB) {
+      if (err) throw err
+
+      // second reply, with TS too early by 2 hours
+      ssb.add(customTimeCreateMsg(carla, Date.now() + 1000*60*60*2, { type: 'post', text: 'c', root: msgA.key, branch: msgB.key }), function (err, msgC) {
+        if (err) throw err
+
+        // third reply, correct TS
+        ssb.add(customTimeCreateMsg(dan, Date.now(), { type: 'post', text: 'd', root: msgA.key, branch: msgC.key }), function (err, msgD) {
+          if (err) throw err
+
+          // fetch and flatten the thread
+          threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+            if (err) throw err
+
+            var msgs = threadlib.flattenThread(thread)
+            t.equal(msgs.length, 4)
+            // ensure msgs were reordered correctly
+            t.equal(msgs[0].key, msgA.key)
+            t.equal(msgs[1].key, msgB.key) 
+            t.equal(msgs[2].key, msgC.key)
+            t.equal(msgs[3].key, msgD.key)
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
 tape('flattenThread weaves mentions into the thread', function (t) {
 
   var db = sublevel(level('test-patchwork-threads-flatten-mentions', {
