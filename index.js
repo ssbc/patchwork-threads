@@ -276,6 +276,8 @@ exports.attachThreadIsread = function (ssb, thread, maxdepth, cb) {
       return cb2() // already handled
     if (msg.value.content.type != 'post')
       return cb2() // not a post
+    if (msg !== thread && !isaReplyTo(msg, thread))
+      return cb2() // not a reply
 
     msg.isRead = false
     ssb.patchwork.isRead(msg.key, function (err, isRead) {
@@ -292,6 +294,8 @@ exports.attachThreadIsbookmarked = function (ssb, thread, maxdepth, cb) {
       return cb2() // already handled
     if (msg.value.content.type != 'post')
       return cb2() // not a post
+    if (msg !== thread && !isaReplyTo(msg, thread))
+      return cb2() // not a reply
 
     msg.isBookmarked = false
     ssb.patchwork.isBookmarked(msg.key, function (err, isBookmarked) {
