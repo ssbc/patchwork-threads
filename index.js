@@ -307,9 +307,6 @@ exports.attachThreadIsbookmarked = function (ssb, thread, maxdepth, cb) {
 
 exports.compileThreadVotes = function (thread) {
   compileMsgVotes(thread)
-  if (thread.related)
-    thread.related.forEach(compileMsgVotes)
-
   function compileMsgVotes (msg) {
     msg.votes = {}
     if (!msg.related || !msg.related.length)
@@ -318,7 +315,9 @@ exports.compileThreadVotes = function (thread) {
     msg.related.forEach(function (r) {
       var c = r.value.content
       if (c.type === 'vote' && c.vote && 'value' in c.vote)
-        msg.votes[r.value.author] = c.vote.value
+        msg.votes[r.value.author] = c.vote.value // record vote
+      if (c.type === 'post' && isaReplyTo(r, msg))
+        compileMsgVotes(r) // recurse
     })
   }
 }
