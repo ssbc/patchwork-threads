@@ -179,7 +179,8 @@ exports.getPostSummary = function (ssb, mid, opts, cb) {
 
   // get message and immediate backlinks
   var done = multicb({ pluck: 1, spread: true })
-  ssb.get(mid, done())
+  var msgCb = done()
+  ssb.get(mid, (err, msg) => msgCb(null, msg)) // suppress error caused by not found, will be reflected by missing `value`
   pull(ssb.links({ dest: mid, keys: true, values: true }), pull.collect(done()))
   done((err, value, related) => {
     if (err) return cb(err)
@@ -234,7 +235,7 @@ exports.fetchThreadData = function (ssb, thread, opts, cb) {
 }
 
 exports.iterateThread = function (thread, maxDepth, fn) {
-  fn(thread)
+  thread.value && fn(thread)
   if (thread.related)
     iterate(thread.related, 1)
 
@@ -243,7 +244,7 @@ exports.iterateThread = function (thread, maxDepth, fn) {
       return
     // run through related
     msgs.forEach(function (msg) {
-      fn(msg) // run on item
+      msg.value && fn(msg) // run on item
       if (msg.related)
         iterate(msg.related, n+1)
     })
@@ -252,7 +253,7 @@ exports.iterateThread = function (thread, maxDepth, fn) {
 
 exports.iterateThreadAsync = function (thread, maxDepth, fn, cb) {
   var done = multicb()
-  fn(thread, done()) // run on toplevel
+  thread.value && fn(thread, done()) // run on toplevel
   if (thread.related)
     iterate(thread.related, 1)
   done(function (err) { cb(err, thread) })
@@ -262,7 +263,7 @@ exports.iterateThreadAsync = function (thread, maxDepth, fn, cb) {
       return
     // run through related
     msgs.forEach(function (msg) {
-      fn(msg, done()) // run on item
+      msg.value && fn(msg, done()) // run on item
       if (msg.related)
         iterate(msg.related, n+1)
     })
