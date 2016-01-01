@@ -180,9 +180,12 @@ exports.getPostSummary = function (ssb, mid, opts, cb) {
   // get message and immediate backlinks
   var done = multicb({ pluck: 1, spread: true })
   var msgCb = done()
-  ssb.get(mid, (err, msg) => msgCb(null, msg)) // suppress error caused by not found, will be reflected by missing `value`
+  ssb.get(mid, function (err, msg) {
+    // suppress error caused by not found, will be reflected by missing `value`
+    msgCb(null, msg)
+  })
   pull(ssb.links({ dest: mid, keys: true, values: true }), pull.collect(done()))
-  done((err, value, related) => {
+  done(function (err, value, related) {
     if (err) return cb(err)
     var thread = { key: mid, value: value, related: related }
     exports.fetchThreadData(ssb, thread, opts, cb)
