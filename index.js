@@ -386,6 +386,13 @@ exports.getLastThreadPost = function (thread) {
   return msg
 }
 
+exports.getLatestRevision = function(msg) {
+  // get the revisions, and then return which one is latest
+  return getRevisions(msg).sort(function(msg, otherMsg) {
+    return msg.value.timestamp < otherMsg;
+  })[0];
+}
+
 function isaReplyTo (a, b) {
   var rels = mlib.relationsTo(a, b)
   return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
