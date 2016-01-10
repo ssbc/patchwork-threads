@@ -386,11 +386,50 @@ exports.getLastThreadPost = function (thread) {
   return msg
 }
 
-exports.getLatestRevision = function(msg) {
-  // get the revisions, and then return which one is latest
-  return getRevisions(msg).sort(function(msg, otherMsg) {
-    return msg.value.timestamp < otherMsg;
-  })[0];
+/* post revision utils */
+
+exports.getRevisions = function(thread, callback) {
+  function collectRevisions(thread) {
+    // this function walks the revisions of a given thread, collecting them up
+    // asyncly
+
+    return thread.value.related.map(function(relatedMsg) {
+      if (relatedMsg.type === 'post-edit' &&
+          // ^ make sure it's an edit
+          relatedMsg.value.content.revision &&
+          // ^ may be unnecessary if schema validates
+          (relatedMsg.value.content.revision === thread.value.key ||
+           relatedMsg.value.content.root     === thread.value.key)
+          // ^ either the msg revises the root, or it's a subsequent revision
+         ) {
+        return(relatedMsg);
+      }
+    }).filter(function(msg) { return msg || false}); // eliminate falsehood
+  }
+
+  if (!thread.related) { // if the thread doesn't have its related objects,
+                         // fetch them
+    ssb.relatedMessages(thread, function(err, enrichedThread) {
+      if (err) throw err
+
+      callback(collectRevisions(enrichedThread))
+    })
+  } else { // note: this branch is technically synchronous and the above is not
+           // :(
+    callback(collectRevisions(enrichedThread))
+  }  
+}
+
+exports.getLatestRevision = function(msg, callback) {
+  // get the revisions, and then callback on which one is latest
+  return exports.getRevisions(msg, function(msgRevisions) {
+    callback(
+      msgRevisions.sort(function(msg, otherMsg) {
+        // sort descending in time
+        return msg.value.timestamp < otherMsg;
+      })[0];
+    )
+  })
 }
 
 function isaReplyTo (a, b) {
