@@ -388,31 +388,55 @@ exports.getLastThreadPost = function (thread) {
 
 /* post revision utils */
 
-exports.getRevisions = function(thread, callback) {
+exports.getRevisions = function(ssb, thread, callback) {
   function collectRevisions(thread) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
 
-    return thread.value.related.map(function(relatedMsg) {
-      if (relatedMsg.type === 'post-edit' &&
-          // ^ make sure it's an edit
-          relatedMsg.value.content.revision &&
-          // ^ may be unnecessary if schema validates
-          (relatedMsg.value.content.revision === thread.value.key ||
-           relatedMsg.value.content.root     === thread.value.key)
-          // ^ either the msg revises the root, or it's a subsequent revision
-         ) {
-        return(relatedMsg);
-      }
-    }).filter(function(msg) { return msg || false}); // eliminate falsehood
+    return thread.related
+      .map(function(relatedMsg) {
+      
+        if (relatedMsg.value.content.type === 'post-edit' &&
+            // ^ make sure it's an edit
+            relatedMsg.value.content.revision &&
+            // ^ may be unnecessary if schema validates
+            (relatedMsg.value.content.revision === thread.key ||
+             relatedMsg.value.content.root     === thread.key)
+            // ^ either the msg revises the root, or it's a subsequent revision
+           ) {
+          return(relatedMsg);
+        }
+      })
+      .filter(function(msg) { return msg || false}) // eliminate falsehood
+      .sort(function (oneRev, otherRev) { // remove duplicates by sorting and
+                                          // reducing over the sorted arr
+        return oneRev.key < otherRev.key
+      })
+      .reduce(function(prevRevs, thisRev, thisInd) {
+        var previousKey = "";
+        prevRevs.length ?
+          previousKey = prevRevs[prevRevs.length - 1].key :
+          previousKey = prevRevs.key
+        if (previousKey === thisRev.key) {
+          // remove duplicate
+          return (prevRevs instanceof Array ? prevRevs : [prevRevs])
+        } else {
+          if (!prevRevs.concat) { // js, your reduce is strange
+            return [].concat(prevRevs, thisRev)
+          } else {
+            return prevRevs.concat(thisRev)
+          }
+        }
+      })
   }
+            
 
   if (!thread.related) { // if the thread doesn't have its related objects,
                          // fetch them
     ssb.relatedMessages(thread, function(err, enrichedThread) {
       if (err) throw err
-
-      callback(collectRevisions(enrichedThread))
+      else if (!enrichedThread.related) callback([]) // if still no related objects
+      else callback(collectRevisions(enrichedThread))
     })
   } else { // note: this branch is technically synchronous and the above is not
            // :(
@@ -420,15 +444,14 @@ exports.getRevisions = function(thread, callback) {
   }  
 }
 
-exports.getLatestRevision = function(msg, callback) {
+exports.getLatestRevision = function(ssb, msg, callback) {
   // get the revisions, and then callback on which one is latest
-  return exports.getRevisions(msg, function(msgRevisions) {
-    callback(
-      msgRevisions.sort(function(msg, otherMsg) {
-        // sort descending in time
-        return msg.value.timestamp < otherMsg;
-      })[0];
-    )
+  exports.getRevisions(ssb, msg, function(msgRevisions) {
+    var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
+      // sort descending in time
+      return msg.value.timestamp < otherMsg
+    })
+    callback(sortedRevisions[0])
   })
 }
 
