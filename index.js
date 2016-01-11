@@ -53,12 +53,13 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
 
   // get message and full tree of backlinks
   ssb.relatedMessages({ id: mid, count: true }, function (err, thread) {
+    console.log(thread)
     if (err) return cb(err)
 
     // get latest revision
-    exports.getLatestRevision(ssb, thread, function(thread) {
+    // exports.getLatestRevision(ssb, thread, function(thread) {
       exports.fetchThreadData(ssb, thread, opts, cb)
-    })
+    // })
   })
 }
 
