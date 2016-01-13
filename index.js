@@ -398,8 +398,8 @@ exports.getRevisions = function(ssb, thread, callback) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
 
-    return thread.related
-      .map(function(relatedMsg) {
+    var threadRevisions = thread.related
+        .map(function(relatedMsg) {
       
         if (relatedMsg.value.content.type === 'post-edit' &&
             // ^ make sure it's an edit
@@ -416,23 +416,27 @@ exports.getRevisions = function(ssb, thread, callback) {
       .sort(function (oneRev, otherRev) { // remove duplicates by sorting and
                                           // reducing over the sorted arr
         return oneRev.key < otherRev.key
-      })
-      .reduce(function(prevRevs, thisRev, thisInd) {
-        var previousKey = "";
-        prevRevs.length ?
-          previousKey = prevRevs[prevRevs.length - 1].key :
-          previousKey = prevRevs.key
-        if (previousKey === thisRev.key) {
-          // remove duplicate
-          return (prevRevs instanceof Array ? prevRevs : [prevRevs])
-        } else {
-          if (!prevRevs.concat) { // js, your reduce is strange
-            return [].concat(prevRevs, thisRev)
+      });
+    if (threadRevisions.length > 0) {
+      threadRevisions =
+        threadRevisions.reduce(function(prevRevs, thisRev, thisInd) {
+          var previousKey = "";
+          prevRevs.length ?
+            previousKey = prevRevs[prevRevs.length - 1].key :
+            previousKey = prevRevs.key
+          if (previousKey === thisRev.key) {
+            // remove duplicate
+            return (prevRevs instanceof Array ? prevRevs : [prevRevs])
           } else {
-            return prevRevs.concat(thisRev)
+            if (!prevRevs.concat) { // js, your reduce is strange
+              return [].concat(prevRevs, thisRev)
+            } else {
+              return prevRevs.concat(thisRev)
+            }
           }
-        }
-      })
+        })
+    }
+    return threadRevisions
   }
             
 
