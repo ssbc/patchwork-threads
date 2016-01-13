@@ -77,16 +77,16 @@ tape('getLatestRevision returns the latest rev of a msg', function(t) {
   })  
 })
  
-tape('getLatestRevision returns an empty array if no revisions', function(t) {
+tape('getLatestRevision returns the original msg if no revisions', function(t) {
   t.plan(1)
   
   var alice = ssb.createFeed(ssbKeys.generate())
   
   alice.add({ type: 'post', text: 'a' }, function (err, origMsg) {
     if (err) throw err
-
+    
     threadlib.getLatestRevision(ssb, origMsg, function(latestRev) {
-      t.notOk(latestRev)
+      t.equal(latestRev, origMsg)
       t.end()
     })
   })
