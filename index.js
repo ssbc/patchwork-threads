@@ -460,7 +460,9 @@ exports.getLatestRevision = function(ssb, msg, callback) {
       // sort descending in time
       return msg.value.timestamp < otherMsg
     })
-    callback(sortedRevisions[0])
+    if (sortedRevisions === undefined) // no revisions case
+      callback(msg)
+    else callback(sortedRevisions[0])
   })
 }
 
