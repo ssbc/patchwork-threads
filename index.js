@@ -436,16 +436,16 @@ exports.getRevisions = function(ssb, thread, callback) {
   }
             
 
-  if (!thread.related) { // if the thread doesn't have its related objects,
+  if (!thread.hasOwnProperty('related')) { // if the thread doesn't have its related objects,
                          // fetch them
     ssb.relatedMessages(thread, function(err, enrichedThread) {
       if (err) throw err
-      else if (!enrichedThread.related) callback([]) // if still no related objects
+      else if (!enrichedThread.hasOwnProperty('related')) callback([]) // if still no related objects
       else callback(collectRevisions(enrichedThread))
     })
   } else { // note: this branch is technically synchronous and the above is not
            // :(
-    callback(collectRevisions(enrichedThread))
+    callback(collectRevisions(thread))
   }  
 }
 
