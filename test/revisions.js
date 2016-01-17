@@ -22,7 +22,7 @@ tape('getRevisions returns an array', function(t) {
   alice.add({ type: 'post', text: 'a' }, function (err, origMsg) {
     if (err) throw err
 
-    threadlib.getRevisions(ssb, origMsg, function(revisions) {
+    threadlib.getRevisions(ssb, origMsg, function(err, revisions) {
       t.ok(revisions instanceof Array)
     })
 
@@ -43,7 +43,7 @@ tape('getRevisions returns an array with the right number and type of revisions'
            if (err) throw err
            var msg = origMsg;
            
-           threadlib.getRevisions(ssb, msg, function(revisions){
+           threadlib.getRevisions(ssb, msg, function(err, revisions){
              t.equal(revisions.length, 1)
              t.ok(revisions.every(function(rev){
                return rev.value.content.type === 'post-edit'               
@@ -67,7 +67,7 @@ tape('getLatestRevision returns the latest rev of a msg', function(t) {
       if (err) throw err
       var msg = origMsg;
 
-      threadlib.getLatestRevision(ssb, msg, function(latestRev) {
+      threadlib.getLatestRevision(ssb, msg, function(err, latestRev) {
         t.equal(latestRev.value.content.type, 'post-edit')
         t.ok(latestRev.value.timestamp > msg.value.timestamp)
         t.end()
@@ -85,7 +85,7 @@ tape('getLatestRevision returns the original msg if no revisions', function(t) {
   alice.add({ type: 'post', text: 'a' }, function (err, origMsg) {
     if (err) throw err
     
-    threadlib.getLatestRevision(ssb, origMsg, function(latestRev) {
+    threadlib.getLatestRevision(ssb, origMsg, function(err, latestRev) {
       t.equal(latestRev, origMsg)
       t.end()
     })
