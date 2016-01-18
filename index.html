@@ -1,0 +1,185 @@
+<html>
+    <head>
+    <title>patchwork-threads - Documentation - SSBC</title>
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/atelier-forest-light.css">
+    <script src="/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </head>
+    <body>
+      <div id="topnav">
+    <div id="topnav-inner">
+      <a class="topnav-item " href="/" title="Home">
+      Home<br><small>SSBC</small>
+    </a>
+      <a class="topnav-item " href="/patchwork" title="Patchwork">
+      Patchwork<br><small>Social Messaging App</small>
+    </a>
+      <a class="topnav-item " href="/scuttlebot" title="Scuttlebot">
+      Scuttlebot<br><small>P2P Log Store</small>
+    </a>
+      <a class="topnav-item selected" href="/docs" title="Documentation">
+      Documentation<br><small>APIs, Articles</small>
+    </a>
+    </div>
+  </div>
+      <div id="layout">
+        <div id="leftnav">
+      <div class="leftnav-item">Key Concepts</div>
+      <div class="leftnav-subitems">
+        <div class="leftnav-item ">
+      <a href="/secure-scuttlebutt" title="Secure Scuttlebutt: a global database protocol">Secure Scuttlebutt: a global database protocol</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/ssb/linking.html" title="Content-Hash Linking">Content-Hash Linking</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/ssb/secret-handshake.html" title="Secret Handshake: a secure channel protocol">Secret Handshake: a secure channel protocol</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/ssb/end-to-end-encryption.html" title="Private Box: metadata-free encryption">Private Box: metadata-free encryption</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/ssb/faq.html" title="Frequently Asked Questions">Frequently Asked Questions</a>
+    </div>
+      </div>
+      <div class="leftnav-item">API Documentation</div>
+      <div class="leftnav-subitems">
+        <div class="leftnav-item ">
+      <a href="/scuttlebot/api.html" title="scuttlebot">scuttlebot</a>
+    </div>
+        <div class="leftnav-indent">
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/blobs.html" title="blobs">blobs</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/block.html" title="block">block</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/friends.html" title="friends">friends</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/gossip.html" title="gossip">gossip</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/invite.html" title="invite">invite</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/private.html" title="private">private</a>
+    </div>
+          <div class="leftnav-item ">
+      <a href="/scuttlebot/plugins/replicate.html" title="replicate">replicate</a>
+    </div>
+        </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-client" title="ssb-client">ssb-client</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-feed" title="ssb-feed">ssb-feed</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-keys" title="ssb-keys">ssb-keys</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-msgs" title="ssb-msgs">ssb-msgs</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-msg-schemas" title="ssb-msg-schemas">ssb-msg-schemas</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-ref" title="ssb-ref">ssb-ref</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-markdown" title="ssb-markdown">ssb-markdown</a>
+    </div>
+        <div class="leftnav-item selected">
+      <a href="/patchwork-threads" title="patchwork-threads">patchwork-threads</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/ssb-config" title="ssb-config">ssb-config</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/secret-stack" title="secret-stack">secret-stack</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/muxrpc" title="muxrpc">muxrpc</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/muxrpcli" title="muxrpcli">muxrpcli</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/mdmanifest" title="mdmanifest">mdmanifest</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/api/pull-stream.html" title="pull-stream">pull-stream</a>
+    </div>
+      </div>
+      <div class="leftnav-item">Articles</div>
+      <div class="leftnav-subitems">
+        <div class="leftnav-item ">
+      <a href="/docs/articles/design-challenge-avoid-centralization-and-singletons.html" title="Design Challenge: Avoiding Centralization and Singletons">Design Challenge: Avoiding Centralization and Singletons</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/articles/design-challenge-sybil-attack.html" title="Design Challenge: Sybil Attacks">Design Challenge: Sybil Attacks</a>
+    </div>
+        <div class="leftnav-item ">
+      <a href="/docs/articles/using-trust-in-open-networks.html" title="Using Trust in Open Networks">Using Trust in Open Networks</a>
+    </div>
+      </div>
+    </div>
+        <div id="content">
+          <h1 id="patchwork-threads">patchwork-threads</h1>
+<pre><code class="lang-js">var threadlib = require(&#39;patchwork-threads&#39;)
+
+// get the ID of the root message of the thread for any given msg id
+threadlib.fetchThreadRootID (ssb, mid, cb)
+
+// get full thread structure
+// `opts` used in fetchThreadData
+threadlib.getPostThread (ssb, mid, opts, cb)
+
+// get full thread structure, starting possibly from a reply
+// `opts` used in fetchThreadData
+threadlib.getParentPostThread (ssb, mid, opts, cb)
+
+// get a flattened msg-list of the thread, ready for rendering
+threadlib.flattenThread (thread)
+
+// get top-level thread structure (no replies of replies)
+// `opts` used in fetchThreadData
+threadlib.getPostSummary (ssb, mid, opts, cb)
+
+// get top-level thread structure (no replies of replies), starting possibly from a reply
+// `opts` used in fetchThreadData
+threadlib.getParentPostSummary (ssb, mid, opts, cb)
+
+// fetch &amp; compute data related to the given thread
+// - opts.isRead: attach isread data
+// - opts.isBookmarked: attach isBookmarked data
+// - opts.votes: compute votes data
+threadlib.fetchThreadData (ssb, thread, opts, cb)
+
+// helpers to iterate a thread
+threadlib.iterateThread (thread, maxDepth, fn)
+threadlib.iterateThreadAsync (thread, maxDepth, fn, cb)
+
+// helpers used in fetchThreadData
+threadlib.attachThreadIsread (ssb, thread, maxdepth, cb)
+threadlib.attachThreadIsbookmarked (ssb, thread, maxdepth, cb)
+threadlib.compileThreadVotes (thread)
+
+// mark all unread msgs in the thread as read
+threadlib.markThreadRead (ssb, thread, cb)
+
+// decrypt the msgs in the thread, if not yet decrypted
+threadlib.decryptThread (ssb, thread, cb)
+
+// get the last type:post msg in the thread
+threadlib.getLastThreadPost (thread)
+</code></pre>
+
+        </div>
+      </div>
+    </body>
+  </html>
