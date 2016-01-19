@@ -446,14 +446,18 @@ exports.getLatestRevision = function(ssb, msg, callback) {
   // get the revisions, and then callback on which one is latest
   exports.getRevisions(ssb, msg, function(err, msgRevisions) {
     if (err) callback(err)
-    if (msgRevisions === undefined) callback(null, msg)
-    var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
-      // sort descending in time
-      return msg.value.timestamp < otherMsg
-    })
-    if (sortedRevisions.length === 0) { // no revisions case
-      callback(null, msg)
-    } else callback(null, sortedRevisions[0])
+    else if (msgRevisions === undefined) callback(null, msg)
+    else {
+      var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
+        // sort descending in time
+        return msg.value.timestamp < otherMsg
+      })
+      if (sortedRevisions.length === 0) { // no revisions case
+        callback(null, msg)
+      } else {
+        callback(null, sortedRevisions[0])
+      }
+    }
   })
 }
 
