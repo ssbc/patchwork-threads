@@ -445,6 +445,8 @@ exports.getRevisions = function(ssb, thread, callback) {
 exports.getLatestRevision = function(ssb, msg, callback) {
   // get the revisions, and then callback on which one is latest
   exports.getRevisions(ssb, msg, function(err, msgRevisions) {
+    if (err) callback(err)
+    if (msgRevisions === undefined) callback(null, [])
     var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
       // sort descending in time
       return msg.value.timestamp < otherMsg
