@@ -56,9 +56,10 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
     if (err) return cb(err)
 
     // get latest revision
-    // exports.getLatestRevision(ssb, thread, function(thread) {
+    exports.getLatestRevision(ssb, thread, function(err, thread) {
+      if (err) return cb(err)
       exports.fetchThreadData(ssb, thread, opts, cb)
-    // })
+    })
   })
 }
 
