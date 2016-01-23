@@ -54,12 +54,21 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
   // get message and full tree of backlinks
   ssb.relatedMessages({ id: mid, count: true }, function (err, thread) {
     if (err) return cb(err)
+    exports.fetchThreadData(ssb, thread, opts, cb)
+  })
+}
 
-    // get latest revision
-    exports.getLatestRevision(ssb, thread, function(err, thread) {
-      if (err) return cb(err)
-      exports.fetchThreadData(ssb, thread, opts, cb)
-    })
+exports.reviseFlatThread = function(ssb, thread, callback) {
+  // simple function that calls getLatestRevision on each of the elements of a
+  // flat thread, and collects them up into one callback.
+  var callbackAggregator = multicb({pluck: 1})
+  thread.forEach((thisMsg) => {
+    exports.getLatestRevision(ssb, thisMsg, callbackAggregator())
+  })
+
+  callbackAggregator((err, results) => {
+    if (err) {callback(err)}
+    else callback(null, results)
   })
 }
 
