@@ -149,9 +149,9 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
     // load test thread into ssb
     alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
       if (err) throw err
-       alice.add(schemas.postEdit('foo', msgA.key, null, msgA.key), 
+       alice.add({type: 'post-edit', text: 'a-revised', 
+                  root: msgA.key, revision: msgA.key},
          function(err, revisionA) {
-      
           // first reply
           bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
             if (err) throw err
@@ -161,7 +161,8 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
               function (err, msgC) {
                 if (err) throw err
           
-                carla.add(schemas.postEdit('foo', msgC.key, null, msgC.key), 
+                carla.add({type: 'post-edit', text: 'c-revised', 
+                           root: msgA.key, revision: msgC.key},
                   function(err, revisionC) {
 
                     // fetch and flatten the complete unedited thread

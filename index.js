@@ -67,8 +67,18 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
   })
 
   callbackAggregator((err, results) => {
-    if (err) {callback(err)}
-    else callback(null, results)
+    if (err) {
+      callback(err)
+    } else { 
+      // remove duplicates by converting keys into a set
+      const uniqKeys = new Set(results.map((t) => t.key))
+      var uniqFlatThread = []
+
+      for (var item of uniqKeys) {
+        uniqFlatThread.push(results.find((t) => t.key === item))
+      }
+      callback(null, uniqFlatThread) 
+    }
   })
 }
 
