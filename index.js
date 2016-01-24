@@ -79,6 +79,7 @@ exports.flattenThread = function (thread) {
   // 2. ordering the list such that replies are always after their immediate parent
   // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
   // 4. detecting missing parents and weaving in "hey this is missing" objects
+  const thingsThatArePosts = ['post', 'post-edit'] // things we think are posts
   var related = (thread.related||[])
   var availableIds = new Set([thread.key].concat(related.map(function (m) { return m.key })))
   var addedIds = new Set([thread.key])
@@ -123,7 +124,8 @@ exports.flattenThread = function (thread) {
     addedIds.add(msg.key)
   }
   function flattenAndReorderReplies (msg) {
-    if (msg.value.content.type == 'post' && isaReplyTo(msg, thread)) {
+    if (thingsThatArePosts.indexOf(msg.value.content.type !== -1) && 
+        isaReplyTo(msg, thread)) {
       insertReply(msg)
       ;(msg.related||[]).forEach(flattenAndReorderReplies)
     }
@@ -144,7 +146,7 @@ exports.flattenThread = function (thread) {
       if (addedIds.has(msg.key))
         return // skip duplicates
       // insert if a mention to its parent
-      if (msg.value.content.type == 'post' && isaMentionTo(msg, parent))
+      if (thingsThatArePosts.indexOf(msg.value.content.type !== -1) && isaMentionTo(msg, parent))
         insertMention(msg, parent.key)
     })
   }
