@@ -420,21 +420,16 @@ exports.getRevisions = function(ssb, thread, callback) {
     // asyncly
     try {
       var threadRevisions = thread.related
-          .map(function(relatedMsg) {
-            const relMsg = relatedMsg.value.content
-            
-            if (relMsg.type === 'post-edit' &&
-                // ^ make sure it's an edit
-                relMsg.revision &&
-                // ^ may be unnecessary if schema validates
-                (relMsg.revision === thread.key ||
-                 relMsg.root     === thread.key)
-                // ^ either the msg revises the root, or it's a subsequent revision
-               ) {
-              return(relatedMsg);
-            }
-          })
-          .filter(Boolean) // eliminate falsehood
+        .filter((relatedMsg) => {
+          const relMsg = (relatedMsg.value.content)
+          const isPost = (relMsg.type === 'post-edit')
+          const sameAuthor = (relatedMsg.value.author 
+                                === thread.value.author)
+          const revisesRoot = (relMsg.root === thread.key &&
+                               relMsg.revision === thread.key)
+          const revisesReply = (relMsg.revision === thread.key)
+          return isPost && sameAuthor && (revisesRoot || revisesReply)
+        })
 
       // remove duplicates by converting keys into a set
       const uniqKeys = new Set(threadRevisions.map((t) => t.key))
@@ -443,6 +438,7 @@ exports.getRevisions = function(ssb, thread, callback) {
       for (var item of uniqKeys) {
         uniqThreadRevisions.push(threadRevisions.find((t) => t.key === item))
       }
+      
       return uniqThreadRevisions
     } catch (err) {
       callback(err)
