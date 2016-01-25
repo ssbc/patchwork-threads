@@ -149,9 +149,84 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
     // load test thread into ssb
     alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
       if (err) throw err
-       // alice.add({type: 'post-edit', text: 'a-revised', 
-       //            root: msgA.key, revision: msgA.key},
-       //   function(err, revisionA) {
+      // first reply
+      bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
+        if (err) throw err
+
+        // second reply
+        carla.add({ type: 'post', text: 'c', root: msgA.key, branch: msgB.key }, 
+          function (err, msgC) {
+            if (err) throw err
+          
+            carla.add({type: 'post-edit', text: 'c-revised', 
+                       root: msgA.key, revision: msgC.key},
+                       function(err, revisionC) {
+
+                         // fourth reply
+                         bob.add({type: 'post', text: 'b2', root: msgA.key}, 
+                         function(err, msgB2) {
+                           // bob revises first reply
+                           bob.add({ type: 'post-edit', text: 'b-revised', root: msgA.key, revision: msgB.key }, 
+                           function (err, revisionB) {
+                             if (err) throw err
+                        
+                             // fetch and flatten the complete unedited thread
+                             threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+                               if (err) throw err
+                      
+                               var flatThread = threadlib.flattenThread(thread)
+                      
+                               // get each of the revisions manually
+                               var revisionsCallback = multicb({pluck: 1})
+                               threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
+                               threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
+                               threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
+                               threadlib.getLatestRevision(ssb, msgB2, revisionsCallback())
+                          
+                               threadlib.reviseFlatThread(ssb, flatThread, 
+                                 function(err, newFlatThread) {
+                                   revisionsCallback(function(err, latestRevs) {
+                                     t.equal(newFlatThread.length, 4)
+                                     t.equal(newFlatThread[0].key, latestRevs[0].key)
+                                     t.equal(newFlatThread[1].key, latestRevs[1].key)
+                                     t.equal(newFlatThread[2].key, latestRevs[2].key)
+                                     t.equal(newFlatThread[3].key, latestRevs[3].key)
+                                     t.equal(newFlatThread[0].value.content.text, 'a')
+                                     t.equal(newFlatThread[1].value.content.text, 'b-revised')
+                                     t.equal(newFlatThread[2].value.content.text, 'c-revised')
+                                     t.equal(newFlatThread[3].value.content.text, 'b2')
+                                     t.end()
+                                  })
+                                })
+                              })                                            
+                          })
+                      })
+                  })
+          })
+        })
+    })
+ })
+
+tape('reviseFlatThread returns properly even if root is revised', 
+  function(t) {
+    t.plan(7)
+    
+    var db = sublevel(level('test-patchwork-threads-revise-root', {
+      valueEncoding: defaults.codec
+    }))
+    var ssb = SSB(db, defaults)
+
+    var alice = ssb.createFeed(ssbKeys.generate())
+    var bob = ssb.createFeed(ssbKeys.generate())
+    var carla = ssb.createFeed(ssbKeys.generate())
+  
+    // begin callback hellpyramid
+    // load test thread into ssb
+    alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+      if (err) throw err
+       alice.add({type: 'post-edit', text: 'a-revised', 
+                  root: msgA.key, revision: msgA.key},
+         function(err, revisionA) {
           // first reply
           bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
             if (err) throw err
@@ -164,49 +239,35 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
                 carla.add({type: 'post-edit', text: 'c-revised', 
                            root: msgA.key, revision: msgC.key},
                   function(err, revisionC) {
+                    if (err) throw err
+                    // fetch and flatten the complete unedited thread
+                    threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
 
-                    // fourth reply
-                    bob.add({type: 'post', text: 'b2', root: msgA.key}, 
-                      function(err, msgB2) {
-                        // bob revises first reply
-                        bob.add({ type: 'post-edit', text: 'b-revised', root: msgA.key, revision: msgB.key }, 
-                          function (err, revisionB) {
-                            if (err) throw err
-                        
-                              // fetch and flatten the complete unedited thread
-                              threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
-                              if (err) throw err
+                      var flatThread = threadlib.flattenThread(thread)
                       
-                              var flatThread = threadlib.flattenThread(thread)
-                      
-                              // get each of the revisions manually
-                              var revisionsCallback = multicb({pluck: 1})
-                              threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
-                              threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
-                              threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
-                              threadlib.getLatestRevision(ssb, msgB2, revisionsCallback())
+                      // get each of the revisions manually
+                      var revisionsCallback = multicb({pluck: 1})
+                      threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
+                      threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
+                      threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
                           
-                              threadlib.reviseFlatThread(ssb, flatThread, 
-                                function(err, newFlatThread) {
-                                  revisionsCallback(function(err, latestRevs) {
-                                    t.equal(newFlatThread.length, 4)
-                                    t.equal(newFlatThread[0].key, latestRevs[0].key)
-                                    t.equal(newFlatThread[1].key, latestRevs[1].key)
-                                    t.equal(newFlatThread[2].key, latestRevs[2].key)
-                                    t.equal(newFlatThread[3].key, latestRevs[3].key)
-                                    t.equal(newFlatThread[0].value.content.text, 'a')
-                                    t.equal(newFlatThread[1].value.content.text, 'b-revised')
-                                    t.equal(newFlatThread[2].value.content.text, 'c-revised')
-                                    t.equal(newFlatThread[3].value.content.text, 'b2')
-                                    t.end()
-                                  })
-                                })
-                              })                                            
+                      threadlib.reviseFlatThread(ssb, flatThread, 
+                        function(err, newFlatThread) {
+                          revisionsCallback(function(err, latestRevs) {
+                            t.equal(newFlatThread.length, 3)
+                            t.equal(newFlatThread[0].key, latestRevs[0].key)
+                            t.equal(newFlatThread[1].key, latestRevs[1].key)
+                            t.equal(newFlatThread[2].key, latestRevs[2].key)
+                            t.equal(newFlatThread[0].value.content.text, 'a-revised')
+                            t.equal(newFlatThread[1].value.content.text, 'b')
+                            t.equal(newFlatThread[2].value.content.text, 'c-revised')
+                            t.end()
                           })
-                      })
+                        })
+                    })                                            
                   })
               })
-         // })
-        })
+          })
     })
- })
+  })
+})
