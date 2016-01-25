@@ -17,6 +17,9 @@ threadlib.getParentPostThread (ssb, mid, opts, cb)
 // get a flattened msg-list of the thread, ready for rendering
 threadlib.flattenThread (thread)
 
+// replace each msg in a flattened thread with its latest revision
+threadlib.reviseFlatThread(ssb, thread, cb)
+
 // get top-level thread structure (no replies of replies)
 // `opts` used in fetchThreadData
 threadlib.getPostSummary (ssb, mid, opts, cb)
@@ -48,4 +51,10 @@ threadlib.decryptThread (ssb, thread, cb)
 
 // get the last type:post msg in the thread
 threadlib.getLastThreadPost (thread)
+
+// get messages that were published as revision to an existing message
+threadlib.getRevisions(ssb, thread, callback)
+
+// get the latest revision of an existing message
+threadlib.getLatestRevision(ssb, msg, callback)
 ```
