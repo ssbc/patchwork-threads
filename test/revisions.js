@@ -6,7 +6,7 @@ var SSB       = require('secure-scuttlebutt')
 var defaults  = require('secure-scuttlebutt/defaults')
 var ssbKeys   = require('ssb-keys')
 var threadlib = require('../')
-var mlib = require('ssb-msgs')
+var mlib      = require('ssb-msgs')
 var schemas   = require('ssb-msg-schemas')
 
 tape('getRevisions returns an array', function(t) {
@@ -227,6 +227,7 @@ tape('reviseFlatThread returns properly even if root is revised',
        alice.add({type: 'post-edit', text: 'a-revised', 
                   root: msgA.key, revision: msgA.key},
          function(err, revisionA) {
+      
           // first reply
           bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
             if (err) throw err
@@ -242,7 +243,8 @@ tape('reviseFlatThread returns properly even if root is revised',
                     if (err) throw err
                     // fetch and flatten the complete unedited thread
                     threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
-
+                      if (err) throw err
+                      
                       var flatThread = threadlib.flattenThread(thread)
                       
                       // get each of the revisions manually
@@ -268,6 +270,6 @@ tape('reviseFlatThread returns properly even if root is revised',
                   })
               })
           })
+        })
     })
-  })
 })
