@@ -412,14 +412,24 @@ exports.getLastThreadPost = function (thread) {
   return msg
 }
 
+
 /* post revision utils */
 
 exports.getRevisions = function(ssb, thread, callback) {
   function collectRevisions(thread) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
+    function pluckRecursively( a, prop, mem ){
+      mem = mem || [];
+      if( a[prop] ){
+        mem.push(a[prop]);
+        pluckRecursively( a[prop], prop, mem );
+      }
+      return mem;
+    }
+    var deepThread = pluckRecursively(thread, 'related')[0]
     try {
-      var threadRevisions = thread.related
+      var threadRevisions = deepThread
         .filter((relatedMsg) => {
           const relMsg = (relatedMsg.value.content)
           const isPost = (relMsg.type === 'post-edit')
@@ -446,8 +456,8 @@ exports.getRevisions = function(ssb, thread, callback) {
   }
             
 
-  if (!thread.hasOwnProperty('related')) { // if the thread doesn't have its related objects,
-                         // fetch them
+  if (!thread.hasOwnProperty('related')) { 
+  // if the thread doesn't have its related objects,fetch them
     ssb.relatedMessages({id: thread.key, count: true}, function(err, enrichedThread) {
       if (err) callback (err)
       // if still no related objects
