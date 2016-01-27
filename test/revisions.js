@@ -105,6 +105,38 @@ tape('getLatestRevision returns the original msg if no revisions', function(t) {
   })
 })
 
+tape('getLatestRevision returns latest rev of a msg even if edited many times', 
+  function(t) {
+    t.plan(2)
+  
+    var db = sublevel(level('test-patchwork-threads-latest-multi-rev', {
+      valueEncoding: defaults.codec
+    }))
+    var ssb = SSB(db, defaults)
+    var alice = ssb.createFeed(ssbKeys.generate())
+    
+    alice.add({ type: 'post', text: 'a' }, function (err, origMsg) {
+      if (err) throw err
+      
+      // add revision  
+      alice.add(schemas.postEdit('a-revised', origMsg.key, null, origMsg.key), function(err, revisionA) {
+        if (err) throw err
+
+        // add another revision
+        alice.add(schemas.postEdit('a-revised2', origMsg.key, null, revisionA.key), function(err, revisionA2) {
+          if (err) throw err
+          debugger
+          threadlib.getLatestRevision(ssb, origMsg, function(err, latestRev) {
+            t.equal(latestRev.value.content.type, 'post-edit')
+            t.equal(latestRev.value.content.text, 'a-revised2')
+            t.end()
+          })
+        })
+      })
+    })  
+  })
+
+
 tape('reviseFlatThread returns the original message if only one is present', 
   function(t) {
     t.plan(2)
