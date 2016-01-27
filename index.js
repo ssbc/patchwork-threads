@@ -431,14 +431,16 @@ exports.getRevisions = function(ssb, thread, callback) {
     try {
       var threadRevisions = deepThread
         .filter((relatedMsg) => {
-          const relMsg = (relatedMsg.value.content)
-          const isPost = (relMsg.type === 'post-edit')
-          const sameAuthor = (relatedMsg.value.author 
-                                === thread.value.author)
-          const revisesRoot = (relMsg.root === thread.key &&
-                               relMsg.revision === thread.key)
+          const relMsg       = (relatedMsg.value.content)
+          const isPost       = (relMsg.type === 'post-edit')
+          const sameAuthor   = 
+                  (relatedMsg.value.author === thread.value.author)
+          const isWiki       = (relatedMsg.value.author === 'wiki')
+          const revisesRoot  = (relMsg.root === thread.key)
           const revisesReply = (relMsg.revision === thread.key)
-          return isPost && sameAuthor && (revisesRoot || revisesReply)
+          return isPost && 
+              (sameAuthor || isWiki) && 
+              (revisesRoot || revisesReply)
         })
 
       // remove duplicates by converting keys into a set
