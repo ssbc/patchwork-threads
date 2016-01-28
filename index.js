@@ -416,7 +416,7 @@ exports.getLastThreadPost = function (thread) {
 /* post revision utils */
 
 exports.getRevisions = function(ssb, thread, callback) {
-  function collectRevisions(thread) {
+  function collectRevisions(thread, callback) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
     function pluckRecursively( a, prop, mem ){
@@ -428,47 +428,50 @@ exports.getRevisions = function(ssb, thread, callback) {
       return mem;
     }
     var deepThread = pluckRecursively(thread, 'related')[0]
-    try {
-      var threadRevisions = deepThread
-        .filter((relatedMsg) => {
-          const relMsg       = (relatedMsg.value.content)
-          const isPost       = (relMsg.type === 'post-edit')
-          const sameAuthor   = 
-                  (relatedMsg.value.author === thread.value.author)
-          const isWiki       = (relatedMsg.value.author === 'wiki')
-          const revisesRoot  = (relMsg.root === thread.key)
-          const revisesReply = (relMsg.revision === thread.key)
-          return isPost && 
-              (sameAuthor || isWiki) && 
-              (revisesRoot || revisesReply)
+    var threadRevisionLogCB = multicb({pluck: 1})
+    var threadRevisions = deepThread
+      .filter((relatedMsg) => {
+        const relMsg       = (relatedMsg.value.content)
+        const isEdit       = (relMsg.type === 'post-edit')
+        const sameAuthor   = 
+                (relatedMsg.value.author === thread.value.author)
+        const isWiki       = (relatedMsg.value.author === 'wiki')
+        return isEdit && (sameAuthor || isWiki)
+      })
+      .map(function(edit) {
+        exports.createRevisionLog(ssb, edit, threadRevisionLogCB())
+      })
+    
+    threadRevisionLogCB(function(err, revLogs) {
+      if (err) callback(err)
+      const connectedLogs = revLogs
+        .filter(function(revLog) { 
+          // filter down to the log that links to this thread, by finding the log
+          // whose messages point to this thread as root 
+          // we should only need to test one message if createRevisionLog is
+          // passing tests
+          return revLog[revLog.length-1].key === thread.key
         })
-
+      const logLengths = connectedLogs.map((log) => log.length)
+      const thisLog = connectedLogs.find((log) => log.length === Math.max.apply(Math, logLengths))
       // remove duplicates by converting keys into a set
-      const uniqKeys = new Set(threadRevisions.map((t) => t.key))
-      var uniqThreadRevisions = [];
-
-      for (var item of uniqKeys) {
-        uniqThreadRevisions.push(threadRevisions.find((t) => t.key === item))
-      }
-      
-      return uniqThreadRevisions
-    } catch (err) {
-      callback(err)
-    }
+      callback(null, thisLog)
+    })
+    
   }
             
 
   if (!thread.hasOwnProperty('related')) { 
-  // if the thread doesn't have its related objects,fetch them
+    // if the thread doesn't have its related objects,fetch them
     ssb.relatedMessages({id: thread.key, count: true}, function(err, enrichedThread) {
       if (err) callback (err)
       // if still no related objects
       else if (!enrichedThread.hasOwnProperty('related')) callback(null, [])
-      else callback(null, collectRevisions(enrichedThread))
+      else collectRevisions(enrichedThread, callback)
     })
   } else { // note: this branch is technically synchronous and the above is not
            // :(
-    callback(null, collectRevisions(thread))
+    collectRevisions(thread, callback)
   }  
 }
 
@@ -491,9 +494,10 @@ exports.getLatestRevision = function(ssb, msg, callback) {
   })
 }
 
-exports.createRevisionLog = function (ssb, msgKey, callback) {
+exports.createRevisionLog = function (ssb, msg, callback) {
   // gets the previous revisions of a msg, going back to root
-  msgKey = (msgKey && typeof msgKey == 'object') ? msgKey.key : msgKey
+  // puts the keys back
+  var msgKey = msg.key
   var revisionsThread = []
   up()
   function up () {
@@ -514,7 +518,7 @@ exports.createRevisionLog = function (ssb, msgKey, callback) {
         if (decrypted)
           msg.content = decrypted
 
-        revisionsThread.push(msg)
+        revisionsThread.push({key: msgKey, value: msg})
 
         // revision link? ascend
         if (mlib.link(msg.content.revision, 'msg')) {
@@ -535,7 +539,6 @@ exports.createRevisionLog = function (ssb, msgKey, callback) {
     })
   }
   function finish () {
-    debugger
     callback(null, revisionsThread)
   }
 }

@@ -9,6 +9,41 @@ var threadlib = require('../')
 var mlib      = require('ssb-msgs')
 var schemas   = require('ssb-msg-schemas')
 
+tape('createRevisionLog returns an array of revisions back to root', function(t) {
+  t.plan(5)
+    
+  var db = sublevel(level('test-patchwork-threads-revision-log', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+  
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    if (err) throw err
+
+    alice.add({type: 'post-edit', text: 'a-revised', 
+      root: msgA.key, revision: msgA.key}, function(err, revisionA) {
+        if (err) throw err
+
+        alice.add({type: 'post-edit', text: 'a-revised2', 
+          root: msgA.key, revision: revisionA.key}, function(err, revisionA2) {
+            if (err) throw err
+
+            threadlib.createRevisionLog(ssb, revisionA2, function(err, threadLog) {
+              t.ok(threadLog instanceof Array)
+              t.equal(threadLog.length, 3)
+              t.equal(threadLog[0].value.content.text, 'a-revised2')
+              t.equal(threadLog[1].value.content.text, 'a-revised')
+              t.equal(threadLog[2].value.content.text, 'a')
+            })
+        })
+      })
+  })
+})
+
+
 tape('getRevisions returns an array', function(t) {
   t.plan(1)
   var db = sublevel(level('test-patchwork-threads-revision-array', {
@@ -31,7 +66,7 @@ tape('getRevisions returns an array', function(t) {
 
 tape('getRevisions returns an array with the right number and type of revisions',
      function(t) {
-     t.plan(2)
+     t.plan(3)
 
      var db = sublevel(level('test-patchwork-threads-revision-array-count', {
        valueEncoding: defaults.codec
@@ -45,18 +80,21 @@ tape('getRevisions returns an array with the right number and type of revisions'
          if (err) throw err
          
          // add revision  
-         alice.add(schemas.postEdit('foo', origMsg.key, null, origMsg.key), function(err, revisionA) {
-           if (err) throw err
-           var msg = origMsg;
+         alice.add(schemas.postEdit('foo', origMsg.key, null, origMsg.key), 
+           function(err, revisionA) {
+             if (err) throw err
+             var msg = origMsg;
 
-           threadlib.getRevisions(ssb, msg, function(err, revisions) {
-             t.equal(revisions.length, 1)
-             t.ok(revisions.every(function(rev){
-               return rev.value.content.type === 'post-edit'
-             }))
-             t.end()
+             threadlib.getRevisions(ssb, msg, function(err, revisions) {
+               if (err) throw err
+               t.equal(revisions.length, 2)
+               t.equal(revisions[revisions.length-1].value.content.type, 'post')
+               t.ok(revisions.slice(0,1).every(function(rev){
+                 return rev.value.content.type === 'post-edit'
+               }))
+               t.end()
+             })
            })
-         })
        })
      })
  
@@ -125,11 +163,53 @@ tape('getLatestRevision returns latest rev of a msg even if edited many times',
         // add another revision
         alice.add(schemas.postEdit('a-revised2', origMsg.key, null, revisionA.key), function(err, revisionA2) {
           if (err) throw err
-          debugger
+
           threadlib.getLatestRevision(ssb, origMsg, function(err, latestRev) {
             t.equal(latestRev.value.content.type, 'post-edit')
             t.equal(latestRev.value.content.text, 'a-revised2')
             t.end()
+          })
+        })
+      })
+    })  
+  })
+
+tape('getLatestRevision is not confused by multiple edits different from root',
+  function(t) {
+    t.plan(4)
+  
+    var db = sublevel(level('test-patchwork-threads-latest-multi-rev-root', {
+      valueEncoding: defaults.codec
+    }))
+    var ssb = SSB(db, defaults)
+    var alice = ssb.createFeed(ssbKeys.generate())
+    var bob = ssb.createFeed(ssbKeys.generate())
+    
+    alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+      if (err) throw err
+      
+      // add reply
+      bob.add({type: 'post', text: 'b'}, function(err, msgB) {
+        if (err) throw err
+
+        // add revision
+        bob.add(schemas.postEdit('b-revised2', msgA.key, null, msgB.key), function(err, revisionB2) {
+          if (err) throw err
+
+          threadlib.getLatestRevision(ssb, msgB, function(err, latestRev) {
+            if (err) throw err
+
+            t.equal(latestRev.value.content.type, 'post-edit')
+            t.equal(latestRev.value.content.text, 'b-revised2')
+
+            // the root post should not show revisions
+            threadlib.getLatestRevision(ssb, msgA, function(err, latestRev2) {
+              if (err) throw err
+
+              t.equal(latestRev2.value.content.type, 'post')
+              t.equal(latestRev2.value.content.text, 'a')
+              t.end()
+            })
           })
         })
       })
@@ -337,7 +417,7 @@ tape('reviseFlatThread returns only one revision of each message in order',
             function (err, msgC) {
               if (err) throw err
           
-              carla.add({type: 'post-edit', text: 'c-revised', 
+              carla.add({type: 'post-edit', text: 'c-revised',
                          root: msgA.key, revision: msgC.key},
                          function(err, revisionC) {
                            if (err) throw err
@@ -351,7 +431,7 @@ tape('reviseFlatThread returns only one revision of each message in order',
                                           if (err) throw err
                                           
                                           var flatThread = threadlib.flattenThread(thread)
-                                          debugger;
+
                                           // get each of the revisions manually
                                           var revisionsCallback = multicb({pluck: 1})
                                           
@@ -361,8 +441,9 @@ tape('reviseFlatThread returns only one revision of each message in order',
                                               threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
                                               threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
                                               threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
+                                                debugger
                                                 revisionsCallback(function(err, latestRevs) {
-                                                  t.equal(newFlatThread.length, 3)
+                                                  t.equal(newFlatThread.length, 4)
                                                   t.equal(newFlatThread[0].value.content.text, 'a-revised2')
                                                   t.equal(newFlatThread[1].value.content.text, 'b')
                                                   t.equal(newFlatThread[2].value.content.text, 'c-revised')
@@ -377,34 +458,3 @@ tape('reviseFlatThread returns only one revision of each message in order',
         })
     })
  })
-
-tape('createRevisionLog returns an array of revisions back to root', function(t) {
-  t.plan(5)
-    
-  var db = sublevel(level('test-patchwork-threads-revision-log', {
-    valueEncoding: defaults.codec
-  }))
-  var ssb = SSB(db, defaults)
-
-  var alice = ssb.createFeed(ssbKeys.generate())
-  
-  // load test thread into ssb
-  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
-    if (err) throw err
-
-    alice.add({type: 'post-edit', text: 'a-revised', 
-      root: msgA.key, revision: msgA.key}, function(err, revisionA) {
-      
-        alice.add({type: 'post-edit', text: 'a-revised2', 
-          root: msgA.key, revision: revisionA.key}, function(err, revisionA2) {
-            threadlib.createRevisionLog(ssb, revisionA2.key, function(err, threadLog) {
-              t.ok(threadLog instanceof Array)
-              t.equal(threadLog.length, 3)
-              t.equal(threadLog[0].content.text, 'a-revised2')
-              t.equal(threadLog[1].content.text, 'a-revised')
-              t.equal(threadLog[2].content.text, 'a')
-            })
-        })
-      })
-  })
-})
