@@ -378,3 +378,33 @@ tape('reviseFlatThread returns only one revision of each message in order',
     })
  })
 
+tape('createRevisionLog returns an array of revisions back to root', function(t) {
+  t.plan(5)
+    
+  var db = sublevel(level('test-patchwork-threads-revision-log', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+  
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    if (err) throw err
+
+    alice.add({type: 'post-edit', text: 'a-revised', 
+      root: msgA.key, revision: msgA.key}, function(err, revisionA) {
+      
+        alice.add({type: 'post-edit', text: 'a-revised2', 
+          root: msgA.key, revision: revisionA.key}, function(err, revisionA2) {
+            threadlib.createRevisionLog(ssb, revisionA2.key, function(err, threadLog) {
+              t.ok(threadLog instanceof Array)
+              t.equal(threadLog.length, 3)
+              t.equal(threadLog[0].content.text, 'a-revised2')
+              t.equal(threadLog[1].content.text, 'a-revised')
+              t.equal(threadLog[2].content.text, 'a')
+            })
+        })
+      })
+  })
+})

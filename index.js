@@ -491,6 +491,55 @@ exports.getLatestRevision = function(ssb, msg, callback) {
   })
 }
 
+exports.createRevisionLog = function (ssb, msgKey, callback) {
+  // gets the previous revisions of a msg, going back to root
+  msgKey = (msgKey && typeof msgKey == 'object') ? msgKey.key : msgKey
+  var revisionsThread = []
+  up()
+  function up () {
+    ssb.get(msgKey, function (err, msg) {
+      if (err)
+        return callback(err)
+
+      // not found? finish here
+      if (!msg)
+        return finish()
+
+      // decrypt as needed
+      msg.plaintext = (typeof msg.content != 'string')
+      if (msg.plaintext) return next()
+      var decrypted = ssb.private.unbox(msg.content, next)
+      if (decrypted) next(null, decrypted) // handle sync calling signature
+      function next (err, decrypted) {
+        if (decrypted)
+          msg.content = decrypted
+
+        revisionsThread.push(msg)
+
+        // revision link? ascend
+        if (mlib.link(msg.content.revision, 'msg')) {
+          msgKey = mlib.link(msg.content.revision).link
+          return up()
+        }
+
+        // root link? go straight to that
+        if (mlib.link(msg.content.root, 'msg')) {
+          msgKey = mlib.link(msg.content.root).link
+          return finish()
+        }
+
+
+        // topmost, finish
+        finish()
+      }
+    })
+  }
+  function finish () {
+    debugger
+    callback(null, revisionsThread)
+  }
+}
+
 function isaReplyTo (a, b) {
   var rels = mlib.relationsTo(a, b)
   return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
