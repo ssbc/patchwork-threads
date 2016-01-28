@@ -59,8 +59,8 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
 }
 
 exports.reviseFlatThread = function(ssb, thread, callback) {
-  // simple function that calls getLatestRevision on each of the elements of a
-  // flat thread, and collects them up into one callback.
+  // function that calls getLatestRevision on each of the elements of a flat
+  // thread, and collects them up into one callback.
   var callbackAggregator = multicb({pluck: 1})
   thread.forEach((thisMsg) => {
     exports.getLatestRevision(ssb, thisMsg, callbackAggregator())
@@ -77,7 +77,29 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
       for (var item of uniqKeys) {
         uniqFlatThread.push(results.find((t) => t.key === item))
       }
-      callback(null, uniqFlatThread) 
+      var outputThread = uniqFlatThread.slice()
+      // sort thread by author, then ascending by timestamp
+      var editionThread = uniqFlatThread.sort((threadA, threadB) => {
+        return (
+          (threadA.value.author >= threadB.value.author) &&
+          (threadA.value.timestamp < threadB.value.timestamp)
+        )
+      })
+
+      for (i in editionThread) {
+        for (j in editionThread.slice(i)) {
+          if (isaRevisionTo(editionThread[i], editionThread[j])) {            
+            // remove any threads that have a revision connection with those
+            // that come after
+            editionThread.splice(j, 1)
+            outputThread.splice(outputThread.indexOf(editionThread[i]), 1, editionThread[j])
+            outputThread.splice(outputThread.indexOf(editionThread[j]), 1)
+          }
+        }
+      }
+      
+      
+      callback(null, outputThread)
     }
   })
 }

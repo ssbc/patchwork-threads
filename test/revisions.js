@@ -441,13 +441,13 @@ tape('reviseFlatThread returns only one revision of each message in order',
                                               threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
                                               threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
                                               threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
-                                                debugger
-                                                revisionsCallback(function(err, latestRevs) {
-                                                  t.equal(newFlatThread.length, 4)
-                                                  t.equal(newFlatThread[0].value.content.text, 'a-revised2')
-                                                  t.equal(newFlatThread[1].value.content.text, 'b')
-                                                  t.equal(newFlatThread[2].value.content.text, 'c-revised')
-                                                  t.end()
+
+                                              revisionsCallback(function(err, latestRevs) {
+                                                t.equal(newFlatThread.length, 3)
+                                                t.equal(newFlatThread[0].value.content.text, 'a-revised2')
+                                                t.equal(newFlatThread[1].value.content.text, 'b')
+                                                t.equal(newFlatThread[2].value.content.text, 'c-revised')
+                                                t.end()
                                   })
                                 })
                               })                                            
