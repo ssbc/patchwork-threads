@@ -551,3 +551,19 @@ function isaReplyTo (a, b) {
 function isaMentionTo (a, b) {
   return mlib.relationsTo(a, b).indexOf('mentions') >= 0
 }
+
+function isaRevisionTo (a, b) {
+  var rels = mlib.relationsTo(a, b)
+  return rels.indexOf('revision') >= 0
+}
+
+function removeThreadDuplicates(threadArr) {
+  // remove duplicates by converting keys into a set
+  const uniqKeys = new Set(results.map((t) => t.key))
+  var uniqFlatThread = []
+  
+  for (var item of uniqKeys) {
+    uniqFlatThread.push(results.find((t) => t.key === item))
+  }
+  return uniqFlatThread
+}
