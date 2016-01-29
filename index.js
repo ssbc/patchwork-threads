@@ -70,14 +70,12 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
     if (err) {
       callback(err)
     } else { 
-      // remove duplicates by converting keys into a set
-      const uniqKeys = new Set(results.map((t) => t.key))
-      var uniqFlatThread = []
+      if (results.some((r) => r.value.content.text === 'bad-a-revised2')) { debugger }
 
-      for (var item of uniqKeys) {
-        uniqFlatThread.push(results.find((t) => t.key === item))
-      }
+      var uniqFlatThread = removeThreadDuplicates(results)
+      // copy the revised threads in original order
       var outputThread = uniqFlatThread.slice()
+
       // sort thread by author, then ascending by timestamp
       var editionThread = uniqFlatThread.sort((threadA, threadB) => {
         return (
@@ -91,14 +89,12 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
           if (isaRevisionTo(editionThread[i], editionThread[j])) {            
             // remove any threads that have a revision connection with those
             // that come after
-            editionThread.splice(j, 1)
-            outputThread.splice(outputThread.indexOf(editionThread[i]), 1, editionThread[j])
-            outputThread.splice(outputThread.indexOf(editionThread[j]), 1)
+            var expiredThread = editionThread.splice(j, 1)[0]
+            outputThread.splice(outputThread.indexOf(expiredThread), 1, editionThread[i])
+            outputThread.splice(outputThread.indexOf(editionThread[i]), 1)
           }
         }
       }
-      
-      
       callback(null, outputThread)
     }
   })
@@ -474,9 +470,11 @@ exports.getRevisions = function(ssb, thread, callback) {
           // passing tests
           return revLog[revLog.length-1].key === thread.key
         })
+
+      // the longest such log is the one that contains all of the revisions
       const logLengths = connectedLogs.map((log) => log.length)
-      const thisLog = connectedLogs.find((log) => log.length === Math.max.apply(Math, logLengths))
-      // remove duplicates by converting keys into a set
+      const thisLog = connectedLogs.find((log) => 
+        log.length === Math.max.apply(Math, logLengths))
       callback(null, thisLog)
     })
     
@@ -491,8 +489,7 @@ exports.getRevisions = function(ssb, thread, callback) {
       else if (!enrichedThread.hasOwnProperty('related')) callback(null, [])
       else collectRevisions(enrichedThread, callback)
     })
-  } else { // note: this branch is technically synchronous and the above is not
-           // :(
+  } else {
     collectRevisions(thread, callback)
   }  
 }
@@ -503,6 +500,7 @@ exports.getLatestRevision = function(ssb, msg, callback) {
     if (err) callback(err)
     else if (msgRevisions === undefined) callback(null, msg)
     else {
+
       var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
         // sort descending in time
         return msg.value.timestamp < otherMsg.value.timestamp
@@ -581,11 +579,11 @@ function isaRevisionTo (a, b) {
 
 function removeThreadDuplicates(threadArr) {
   // remove duplicates by converting keys into a set
-  const uniqKeys = new Set(results.map((t) => t.key))
+  const uniqKeys = new Set(threadArr.map((t) => t.key))
   var uniqFlatThread = []
   
   for (var item of uniqKeys) {
-    uniqFlatThread.push(results.find((t) => t.key === item))
+    uniqFlatThread.push(threadArr.find((t) => t.key === item))
   }
   return uniqFlatThread
 }

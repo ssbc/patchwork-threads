@@ -365,7 +365,7 @@ tape('reviseFlatThread returns properly even if root is revised',
                       threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
                       threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
                       threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
-                          
+
                       threadlib.reviseFlatThread(ssb, flatThread, 
                         function(err, newFlatThread) {
                           revisionsCallback(function(err, latestRevs) {
@@ -402,26 +402,26 @@ tape('reviseFlatThread returns only one revision of each message in order',
   
     // begin callback hellpyramid
     // load test thread into ssb
-    alice.add({ type: 'post', text: 'a' }, function (err, msgA) {
+    alice.add({ type: 'post', text: 'bad-a' }, function (err, msgA) {
       if (err) throw err
 
-      alice.add({type: 'post-edit', text: 'a-revised', 
+      alice.add({type: 'post-edit', text: 'bad-a-revised', 
                  root: msgA.key, revision: msgA.key}, function(err, revisionA) {
 
         // first reply
-        bob.add({ type: 'post', text: 'b', root: msgA.key }, function (err, msgB) {
+        bob.add({ type: 'post', text: 'bad-b', root: msgA.key }, function (err, msgB) {
           if (err) throw err
 
           // second reply
-          carla.add({ type: 'post', text: 'c', root: msgA.key, branch: msgB.key }, 
+          carla.add({ type: 'post', text: 'bad-c', root: msgA.key, branch: msgB.key }, 
             function (err, msgC) {
               if (err) throw err
           
-              carla.add({type: 'post-edit', text: 'c-revised',
+              carla.add({type: 'post-edit', text: 'bad-c-revised',
                          root: msgA.key, revision: msgC.key},
                          function(err, revisionC) {
                            if (err) throw err
-                           alice.add({type: 'post-edit', text: 'a-revised2', 
+                           alice.add({type: 'post-edit', text: 'bad-a-revised2', 
                                       root: msgA.key, revision: revisionA.key},
                                       function(err, revisionA2) {
                                         if (err) throw err
@@ -435,7 +435,6 @@ tape('reviseFlatThread returns only one revision of each message in order',
                                           // get each of the revisions manually
                                           var revisionsCallback = multicb({pluck: 1})
                                           
-                                          
                                           threadlib.reviseFlatThread(ssb, flatThread, 
                                             function(err, newFlatThread) {
                                               threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
@@ -444,9 +443,9 @@ tape('reviseFlatThread returns only one revision of each message in order',
 
                                               revisionsCallback(function(err, latestRevs) {
                                                 t.equal(newFlatThread.length, 3)
-                                                t.equal(newFlatThread[0].value.content.text, 'a-revised2')
-                                                t.equal(newFlatThread[1].value.content.text, 'b')
-                                                t.equal(newFlatThread[2].value.content.text, 'c-revised')
+                                                t.equal(newFlatThread[0].value.content.text, 'bad-a-revised2')
+                                                t.equal(newFlatThread[1].value.content.text, 'bad-b')
+                                                t.equal(newFlatThread[2].value.content.text, 'bad-c-revised')
                                                 t.end()
                                   })
                                 })
