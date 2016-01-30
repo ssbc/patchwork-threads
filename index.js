@@ -214,13 +214,13 @@ exports.fetchThreadData = function (ssb, thread, opts, cb) {
       exports.attachThreadIsbookmarked(ssb, thread, 1, done())
 
     // look for user mentions
-    if (!opts || opts.mentions) {
+    if (opts && opts.mentions) {
       thread.mentionsUser = false
       exports.iterateThreadAsync(thread, 1, function (msg, cb2) {
         var c = msg.value.content
         if (c.type !== 'post' || !c.mentions) return cb2()
         mlib.links(c.mentions, 'feed').forEach(function (l) {
-          if (false)//l.link === app.user.id)
+          if (l.link === opts.mentions)
             thread.mentionsUser = true
         })
         cb2()
