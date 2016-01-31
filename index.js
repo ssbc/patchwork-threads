@@ -494,24 +494,16 @@ exports.getRevisions = function(ssb, thread, callback) {
   }  
 }
 
-exports.getLatestRevision = function(ssb, msg, callback) {
-  // get the revisions, and then callback on which one is latest
-  exports.getRevisions(ssb, msg, function(err, msgRevisions) {
-    if (err) callback(err)
-    else if (msgRevisions === undefined) callback(null, msg)
-    else {
-
-      var sortedRevisions = msgRevisions.sort(function(msg, otherMsg) {
-        // sort descending in time
-        return msg.value.timestamp < otherMsg.value.timestamp
-      })
-      if (sortedRevisions.length === 0) { // no revisions case
-        callback(null, msg)
-      } else {
-        callback(null, sortedRevisions[0])
-      }
-    }
-  })
+exports.getLatestRevision = function (ssb, thread, callback) {  
+  var msg = thread
+  if (!msg.hasOwnProperty('related')) {
+    ssb.relatedMessages({id: msg.key, count: true}, function(err, richMsg) {
+      if (err) callback (err)
+      // if still no related objects
+      else if (!richMsg.hasOwnProperty('related')) { callback(null, richMsg) }
+      else { traverseRelatedEdits(richMsg, callback) }
+    })
+  }
 }
 
 exports.createRevisionLog = function (ssb, msg, callback) {
@@ -586,4 +578,41 @@ function removeThreadDuplicates(threadArr) {
     uniqFlatThread.push(threadArr.find((t) => t.key === item))
   }
   return uniqFlatThread
+}
+
+function pluckRecursively( a, prop, mem ){
+  mem = mem || []
+  if( a[prop] ){
+    mem.push(a[prop])
+    pluckRecursively( a[prop], prop, mem )
+  }
+  return mem
+}
+
+function traverseRelatedEdits(msg, callback) {
+  var latestRev = msg
+  if (latestRev.hasOwnProperty('related')) {
+    latestRev.related.forEach(function (relatedMsg) {
+      var root = mlib.link(relatedMsg.root)
+      const relMsg       = (relatedMsg.value.content)
+      const isEdit       = (relMsg.type === 'post-edit')
+      const editsThis    = (relMsg.revision === latestRev.key)
+      const sameAuthor   = (relatedMsg.value.author === latestRev.value.author)
+      const isWiki       = (relatedMsg.value.author === 'wiki')
+      const isNewer      = (relatedMsg.value.timestamp > latestRev.value.timestamp)
+//      if (latestRev.value.content.text === 'edge3-b-revised2') { debugger }
+      if (isEdit && editsThis && (sameAuthor || isWiki) && isNewer) {
+        if (latestRev.related.indexOf(relatedMsg) === latestRev.related.length - 1){
+          latestRev = traverseRelatedEdits(relatedMsg)
+        } else {
+          latestRev = relatedMsg
+        }
+      }
+    })
+  }
+  if (callback instanceof Function) {
+    callback(null, latestRev) // asynchronous case
+  } else {
+    return latestRev // synchronous case
+  }
 }
