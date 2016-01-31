@@ -300,10 +300,13 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
                                  threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
                                  threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
                                  threadlib.getLatestRevision(ssb, msgB2, revisionsCallback())
-                          
+
                                  threadlib.reviseFlatThread(ssb, flatThread, 
                                    function(err, newFlatThread) {
+                                     if (err) throw err
+
                                      revisionsCallback(function(err, latestRevs) {
+                                       if (err) throw err
                                        t.equal(newFlatThread.length, 4)
                                        t.equal(newFlatThread[0].key, latestRevs[0].key)
                                        t.equal(newFlatThread[1].key, latestRevs[1].key)
@@ -405,7 +408,7 @@ tape('edge 1: root edited multiple times out of sequence with rest of thread',
     var alice = ssb.createFeed(ssbKeys.generate())
     var bob = ssb.createFeed(ssbKeys.generate())
     var carla = ssb.createFeed(ssbKeys.generate())
-  
+    
     // begin callback hellpyramid
     // load test thread into ssb
     alice.add({ type: 'post', text: 'edge-a' },
@@ -415,7 +418,7 @@ tape('edge 1: root edited multiple times out of sequence with rest of thread',
                 alice.add({type: 'post-edit', text: 'edge-a-revised', 
                            root: msgA.key, revision: msgA.key},
                           function(err, revisionA) {
-                                                                  
+                            
                             // first reply
                             bob.add({ type: 'post', text: 'edge-b', root: msgA.key },
                                     function (err, msgB) {
@@ -506,9 +509,9 @@ tape('edge 2: reply edited out of sequence with rest of thread', function(t) {
 
                                                         // fetch and flatten the complete unedited thread
                                                         threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
-                                                                                  if (err) throw err
-                                                                                  
-                                                                                  var flatThread = threadlib.flattenThread(thread)
+                                                          if (err) throw err
+                                                          
+                                                          var flatThread = threadlib.flattenThread(thread)
                                                                                       
                                                                                   // get each of the revisions manually
                                                                                   var revisionsCallback = multicb({pluck: 1})
