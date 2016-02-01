@@ -62,8 +62,8 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
   // function that calls getLatestRevision on each of the elements of a flat
   // thread, and collects them up into one callback.
   var callbackAggregator = multicb({pluck: 1})
-  
-  thread.forEach((thisMsg) => { 
+
+  thread.forEach(function (thisMsg) { 
     // we don't *need* to get the latest revision of an edit, it's included
     // already
     if (thisMsg.value.content.type === 'post') {
@@ -74,7 +74,7 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
   callbackAggregator(function (err, results) {
     if (err) {
       callback(err)
-    } else { 
+    } else {
       callback(null, results)
     }
   })
@@ -420,13 +420,11 @@ exports.getRevisions = function(ssb, thread, callback) {
     var deepThread = pluckRecursively(thread, 'related')[0]
 
     var threadRevisionLogCB = multicb({pluck: 1})
-    var threadRevisions = deepThread
-      .filter((relatedMsg) => {
-        return isaRevisionTo(relatedMsg, thread)
-      })
-      .map(function(edit) {
-        exports.createRevisionLog(ssb, edit, threadRevisionLogCB())
-      })
+    deepThread
+    .filter((relatedMsg) => isaRevisionTo(relatedMsg, thread))
+    .forEach(function(edit) {
+      exports.createRevisionLog(ssb, edit, threadRevisionLogCB())
+    })
     
     threadRevisionLogCB(function(err, revLogs) {
       if (err) callback(err)
