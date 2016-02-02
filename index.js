@@ -278,8 +278,8 @@ exports.attachThreadIsread = function (ssb, thread, maxdepth, cb) {
   exports.iterateThreadAsync(thread, maxdepth, function (msg, cb2) {
     if ('isRead' in msg)
       return cb2() // already handled
-    if (msg.value.content.type != 'post')
-      return cb2() // not a post
+    if (msg.value.content.type != 'post' && msg !== thread)
+      return cb2() // not a post or root
     if (msg !== thread && !isaReplyTo(msg, thread))
       return cb2() // not a reply
 
@@ -337,8 +337,8 @@ exports.markThreadRead = function (ssb, thread, cb) {
     } else {
       if (msg.isRead)
         return cb2() // already marked read
-      if (msg.value.content.type != 'post')
-        return cb2() // not a post
+      if (msg.value.content.type != 'post' && msg !== thread)
+        return cb2() // not a post or root
       if (!isaReplyTo(msg, thread))
         return cb2() // not a reply
     }
