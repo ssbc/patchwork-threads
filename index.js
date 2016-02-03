@@ -421,7 +421,7 @@ exports.getRevisions = function(ssb, thread, callback) {
 
     var threadRevisionLogCB = multicb({pluck: 1})
     deepThread
-    .filter((relatedMsg) => isaRevisionTo(relatedMsg, thread))
+    .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
     .forEach(function(edit) {
       exports.createRevisionLog(ssb, edit, threadRevisionLogCB())
     })
@@ -438,9 +438,10 @@ exports.getRevisions = function(ssb, thread, callback) {
         })
 
       // the longest such log is the one that contains all of the revisions
-      const logLengths = connectedLogs.map((log) => log.length)
-      const thisLog = connectedLogs.find((log) => 
-        log.length === Math.max.apply(Math, logLengths))
+      const logLengths = connectedLogs.map(function(log) { return log.length })
+      const thisLog = connectedLogs.find(function(log) {
+                        return log.length === Math.max.apply(Math, logLengths)
+                      })
       callback(null, thisLog)
     })
     
@@ -541,11 +542,11 @@ function isaRevisionTo (a, b) {
 
 function removeThreadDuplicates(threadArr) {
   // remove duplicates by converting keys into a set
-  const uniqKeys = new Set(threadArr.map((t) => t.key))
+  const uniqKeys = new Set(threadArr.map(function(t) { return t.key}))
   var uniqFlatThread = []
   
   for (var item of uniqKeys) {
-    uniqFlatThread.push(threadArr.find((t) => t.key === item))
+    uniqFlatThread.push(threadArr.find(function(t) { return t.key === item}))
   }
   return uniqFlatThread
 }
