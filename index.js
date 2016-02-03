@@ -469,6 +469,10 @@ exports.getLatestRevision = function (ssb, thread, callback) {
       else if (!richMsg.hasOwnProperty('related')) { callback(null, richMsg) }
       else { traverseRelatedEdits(richMsg, callback) }
     })
+  } else if (!msg.hasOwnProperty('related')) {
+    callback(null, msg)
+  } else {
+    traverseRelatedEdits(msg, callback)
   }
 }
 
