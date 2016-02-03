@@ -545,8 +545,8 @@ function removeThreadDuplicates(threadArr) {
   const uniqKeys = new Set(threadArr.map(function(t) { return t.key}))
   var uniqFlatThread = []
   
-  for (var item of uniqKeys) {
-    uniqFlatThread.push(threadArr.find(function(t) { return t.key === item}))
+  for (var item in uniqKeys) {
+    uniqFlatThread.push(threadArr.find(function(t) { return t.key === uniqKeys[item]}))
   }
   return uniqFlatThread
 }
