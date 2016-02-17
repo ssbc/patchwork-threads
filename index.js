@@ -364,7 +364,15 @@ exports.decryptThread = function (ssb, thread, cb) {
 
     // decrypt
     var decrypted = ssb.private.unbox(msg.value.content, next)
-    if (decrypted) next(null, decrypted) // handle sync calling-signature
+
+    // HACK `ssb` may be a local reference to scuttlebot, or an RPC instance
+    // if it's a local reference then the call signature will be sync
+    // the easiest way to tell if that's the case is if the `.hook` method is present
+    // this is pretty brittle - Im opening an issue for a better solution, but this is a blocker
+    // -prf
+    if (ssb.private.unbox.hook)
+      next(null, decrypted)
+
     function next (err, decrypted) {
       if (decrypted)
         msg.value.content = decrypted
