@@ -70,9 +70,9 @@ exports.flattenThread = function (thread) {
   var addedIds = new Set([thread.key])
   var msgs = [thread]
   related.forEach(flattenAndReorderReplies)
-  var msgsDup = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
-  msgsDup.forEach(weaveMentions)
-  msgsDup.forEach(weaveMissingParents)
+  var msgs2 = msgs.slice() // duplicate so the weave iterations dont get disrupted by splices
+  msgs2.forEach(weaveMentions)
+  msgs2.forEach(weaveMissingParents)
   return msgs
 
   function insertReply (msg) {
@@ -149,14 +149,17 @@ exports.flattenThread = function (thread) {
     if (msg.isMention)
       return // ignore the mentions
 
-    var branch = mlib.link(msg.value.content.branch, 'msg')
-    if (branch && !addedIds.has(branch.link)) {
-      if (i === 0) {
-        // topmost post
+    if (i === 0) {
+      // topmost post in our thread
+      var root = mlib.link(msg.value.content.root, 'msg')
+      if (root && !addedIds.has(root.link)) {
         // user may be looking at a reply - just display a link
-        msgs.unshift({ key: branch.link, isLink: true })
-      } else {
-        // one of the replies
+        msgs.unshift({ key: root.link, isLink: true })
+      }
+    } else {
+      // one of the replies
+      var branch = mlib.link(msg.value.content.branch, 'msg')
+      if (branch && !addedIds.has(branch.link)) {
         // if the parent isnt somewhere in the thread, then we dont have it
         insertMissingParent(branch.link, msg.key)
       }
