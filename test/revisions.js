@@ -67,37 +67,36 @@ tape('getRevisions returns an array', function(t) {
 tape('getRevisions returns an array with the right number and type of revisions',
      function(t) {
      t.plan(3)
-
-     var db = sublevel(level('test-patchwork-threads-revision-array-count', {
-       valueEncoding: defaults.codec
-     }))
-     var ssb = SSB(db, defaults)
-
-     
+       
+       var db = sublevel(level('test-patchwork-threads-revision-array-count', {
+         valueEncoding: defaults.codec
+       }))
+       var ssb = SSB(db, defaults)
        var alice = ssb.createFeed(ssbKeys.generate())
-
+       
        alice.add({ type: 'post', text: 'a' }, function (err, origMsg) {
          if (err) throw err
          
          // add revision  
          alice.add(schemas.postEdit('foo', origMsg.key, null, origMsg.key), 
-           function(err, revisionA) {
-             if (err) throw err
-             var msg = origMsg;
-
-             threadlib.getRevisions(ssb, msg, function(err, revisions) {
-               if (err) throw err
-               t.equal(revisions.length, 2)
-               t.equal(revisions[revisions.length-1].value.content.type, 'post')
-               t.ok(revisions.slice(0,1).every(function(rev){
-                 return rev.value.content.type === 'post-edit'
-               }))
-               t.end()
-             })
-           })
+                   function(err, revisionA) {
+                     if (err) throw err
+                     var msg = origMsg;
+                     
+                     threadlib.getRevisions(ssb, msg, function(err, revisions) {
+                       if (err) throw err
+                       
+                       t.equal(revisions.length, 2)
+                       t.equal(revisions[revisions.length-1].value.content.type, 'post')
+                       t.ok(revisions.slice(0,1).every(function(rev){
+                         return rev.value.content.type === 'post-edit'
+                       }))
+                       t.end()
+                     })
+                   })
        })
      })
- 
+
 tape('getLatestRevision returns the latest rev of a msg', function(t) {
   t.plan(2)
   

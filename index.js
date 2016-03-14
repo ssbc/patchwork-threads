@@ -417,13 +417,14 @@ exports.getRevisions = function(ssb, thread, callback) {
   function collectRevisions(thread, callback) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
-    var deepThread = pluckRecursively(thread, 'related')[0]
+    var deepThread = thread.related
 
     var threadRevisionLogCB = multicb({pluck: 1})
     deepThread
-    .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
-    .forEach(function(edit) {
-      exports.createRevisionLog(ssb, edit, threadRevisionLogCB())
+      .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
+      .forEach(function(edit) {
+      // TODO replace me with a re-oredr on the filtered set
+      exports.createRevisionLog(ssb, edit, threadRevisionLogCB()) 
     })
     
     threadRevisionLogCB(function(err, revLogs) {
@@ -551,15 +552,6 @@ function removeThreadDuplicates(threadArr) {
   return uniqFlatThread
 }
 
-function pluckRecursively( a, prop, mem ){
-  mem = mem || []
-  if( a[prop] ){
-    mem.push(a[prop])
-    pluckRecursively( a[prop], prop, mem )
-  }
-  return mem
-}
-
 function isNewerRevision(msg, rev) {
   // more explicit check of revision relationship than above
   var root = mlib.link(rev.root)
@@ -568,7 +560,7 @@ function isNewerRevision(msg, rev) {
   const editsThis    = (relMsg.revision === msg.key)
   const sameAuthor   = (rev.value.author === msg.value.author)
   const isWiki       = (rev.value.author === 'wiki')
-  const isNewer      = (rev.value.timestamp > msg.value.timestamp)
+  const isNewer      = (rev.value.sequence > msg.value.sequence)
 
   return isEdit && editsThis && (sameAuthor || isWiki) && isNewer
 }
@@ -577,8 +569,6 @@ function traverseRelatedEdits(msg, callback) {
   var latestRev = msg
   if (latestRev.hasOwnProperty('related')) {
     latestRev.related.forEach(function (relatedMsg) {
-      
-//      if (latestRev.value.content.text === 'edge3-b-revised2') { debugger }
       if (isNewerRevision(latestRev, relatedMsg)) {
         if (latestRev.related.indexOf(relatedMsg) === latestRev.related.length - 1){
           latestRev = traverseRelatedEdits(relatedMsg)
