@@ -2,6 +2,11 @@ var mlib = require('ssb-msgs')
 var pull = require('pull-stream')
 var multicb = require('multicb')
 
+// shim for array.includes from es6
+Array.prototype.includes = function(item) {
+  return this.indexOf(item) !== -1
+}
+
 exports.fetchThreadRootID = function (ssb, mid, cb) {
   mid = (mid && typeof mid == 'object') ? mid.key : mid
   up()
@@ -132,7 +137,7 @@ exports.flattenThread = function (thread) {
     addedIds.add(msg.key)
   }
   function flattenAndReorderReplies (msg) {
-    if (thingsThatArePosts.indexOf(msg.value.content.type !== -1) && 
+    if (thingsThatArePosts.includes(msg.value.content.type) &&
         isaReplyTo(msg, thread)) {
       insertReply(msg)
       ;(msg.related||[]).forEach(flattenAndReorderReplies)
@@ -151,12 +156,13 @@ exports.flattenThread = function (thread) {
   }
   function weaveMentions (parent) {
     ;(parent.related||[]).forEach(function (msg) { 
-      if (addedIds.has(msg.key))
-        return // skip duplicates
-      // insert if a mention to its parent
-      if (thingsThatArePosts.indexOf(msg.value.content.type !== -1) && isaMentionTo(msg, parent))
-        insertMention(msg, parent.key)
-    })
+       if (addedIds.has(msg.key))
+         return // skip duplicates
+       // insert if a mention to its parent
+       if (thingsThatArePosts.includes(msg.value.content.type) &&
+           isaMentionTo(msg, parent))
+         insertMention(msg, parent.key)
+     })
   }
 
   function insertMissingParent (parentKey, childKey) {
@@ -417,35 +423,13 @@ exports.getRevisions = function(ssb, thread, callback) {
   function collectRevisions(thread, callback) {
     // this function walks the revisions of a given thread, collecting them up
     // asyncly
-    var deepThread = thread.related
-
-    var threadRevisionLogCB = multicb({pluck: 1})
-    deepThread
+    var thredits = thread.related
       .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
-      .forEach(function(edit) {
-      // TODO replace me with a re-oredr on the filtered set
-      exports.createRevisionLog(ssb, edit, threadRevisionLogCB()) 
-    })
-    
-    threadRevisionLogCB(function(err, revLogs) {
-      if (err) callback(err)
-      const connectedLogs = revLogs
-        .filter(function(revLog) { 
-          // filter down to the log that links to this thread, by finding the log
-          // whose messages point to this thread as root 
-          // we should only need to test one message if createRevisionLog is
-          // passing tests
-          return revLog[revLog.length-1].key === thread.key
-        })
-
-      // the longest such log is the one that contains all of the revisions
-      const logLengths = connectedLogs.map(function(log) { return log.length })
-      const thisLog = connectedLogs.find(function(log) {
-                        return log.length === Math.max.apply(Math, logLengths)
-                      })
-      callback(null, thisLog)
-    })
-    
+    thredits = removeThreadDuplicates(thredits)
+      .sort(function(msgA, msgB) {
+        return msgA.value.content.sequence > msgB.value.content.sequence
+      })
+    callback(null, thredits.concat(thread).filter(Boolean))
   }
             
 
@@ -462,7 +446,7 @@ exports.getRevisions = function(ssb, thread, callback) {
   }  
 }
 
-exports.getLatestRevision = function (ssb, thread, callback) {  
+exports.getLatestRevision = function (ssb, thread, callback) {
   var msg = thread
   if (!msg.hasOwnProperty('related')) {
     ssb.relatedMessages({id: msg.key, count: true}, function(err, richMsg) {
@@ -543,11 +527,10 @@ function isaRevisionTo (a, b) {
 
 function removeThreadDuplicates(threadArr) {
   // remove duplicates by converting keys into a set
-  const uniqKeys = new Set(threadArr.map(function(t) { return t.key}))
+  const uniqKeys = Array.from(new Set(threadArr.map(function(t) { return t.key})))
   var uniqFlatThread = []
-  
   for (var item in uniqKeys) {
-    uniqFlatThread.push(threadArr.find(function(t) { return t.key === uniqKeys[item]}))
+    uniqFlatThread.push(threadArr.find(function(t) { return uniqKeys[item] === t.key }))
   }
   return uniqFlatThread
 }
@@ -559,10 +542,9 @@ function isNewerRevision(msg, rev) {
   const isEdit       = (relMsg.type === 'post-edit')
   const editsThis    = (relMsg.revision === msg.key)
   const sameAuthor   = (rev.value.author === msg.value.author)
-  const isWiki       = (rev.value.author === 'wiki')
   const isNewer      = (rev.value.sequence > msg.value.sequence)
 
-  return isEdit && editsThis && (sameAuthor || isWiki) && isNewer
+  return isEdit && editsThis && (sameAuthor) && isNewer
 }
 
 function traverseRelatedEdits(msg, callback) {
