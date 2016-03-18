@@ -427,7 +427,7 @@ exports.getRevisions = function(ssb, thread, callback) {
       .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
     thredits = removeThreadDuplicates(thredits)
       .sort(function(msgA, msgB) {
-        return msgA.value.content.sequence > msgB.value.content.sequence
+        return msgB.value.sequence - msgA.value.sequence
       })
     callback(null, thredits.concat(thread).filter(Boolean))
   }
@@ -453,12 +453,20 @@ exports.getLatestRevision = function (ssb, thread, callback) {
       if (err) callback (err)
       // if still no related objects
       else if (!richMsg.hasOwnProperty('related')) { callback(null, richMsg) }
-      else { traverseRelatedEdits(richMsg, callback) }
+      else {
+        exports.getRevisions(ssb, richMsg, function(err, revisions) {
+          if (err) callback(err)
+          callback(null, revisions[0])
+        })
+      }
     })
   } else if (!msg.hasOwnProperty('related')) {
     callback(null, msg)
   } else {
-    traverseRelatedEdits(msg, callback)
+    exports.getRevisions(ssb, msg, function(err, revisions) {
+      if (err) callback(err)
+      callback(null, revisions[0])
+    })
   }
 }
 
@@ -489,14 +497,14 @@ exports.createRevisionLog = function (ssb, msg, callback) {
         revisionsThread.push({key: msgKey, value: msg})
 
         // revision link? ascend
-        if (mlib.link(msg.content.revision, 'msg')) {
-          msgKey = mlib.link(msg.content.revision).link
+        if (mlib.link(msg.content.revisionBranch, 'msg')) {
+          msgKey = mlib.link(msg.content.revisionBranch).link
           return up()
         }
 
         // root link? go straight to that
-        if (mlib.link(msg.content.root, 'msg')) {
-          msgKey = mlib.link(msg.content.root).link
+        if (mlib.link(msg.content.revisionRoot, 'msg')) {
+          msgKey = mlib.link(msg.content.revisionRoot).link
           return finish()
         }
 
@@ -522,7 +530,8 @@ function isaMentionTo (a, b) {
 
 function isaRevisionTo (a, b) {
   var rels = mlib.relationsTo(a, b)
-  return rels.indexOf('revision') >= 0
+  return rels.indexOf('revisionRoot') >= 0 ||
+    rels.indexOf('revisionBranch') >= 0
 }
 
 function removeThreadDuplicates(threadArr) {
@@ -540,7 +549,7 @@ function isNewerRevision(msg, rev) {
   var root = mlib.link(rev.root)
   const relMsg       = (rev.value.content)
   const isEdit       = (relMsg.type === 'post-edit')
-  const editsThis    = (relMsg.revision === msg.key)
+  const editsThis    = (relMsg.revisionRoot === relMsg.revisionBranch === msg.key)
   const sameAuthor   = (rev.value.author === msg.value.author)
   const isNewer      = (rev.value.sequence > msg.value.sequence)
 
