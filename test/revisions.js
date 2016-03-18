@@ -100,9 +100,9 @@ tape('getRevisions returns an array with the right number and type of revisions'
            },
            function(err, revisionA) {
              if (err) throw err
+
              var msg = origMsg;
-             debugger
-             
+
              threadlib.getRevisions(ssb, msg, function(err, revisions) {
                if (err) throw err
                
@@ -638,7 +638,7 @@ tape('edge 2: reply edited out of sequence with rest of thread', function(t) {
                         
                         // get each of the revisions manually
                         var revisionsCallback = multicb({pluck: 1})
-                        debugger
+
                         threadlib.reviseFlatThread(
                           ssb, flatThread, 
                           function(err, newFlatThread) {

@@ -451,7 +451,7 @@ exports.getLatestRevision = function (ssb, thread, callback) {
   if (!msg.hasOwnProperty('related')) {
     ssb.relatedMessages({id: msg.key, count: true}, function(err, richMsg) {
       if (err) callback (err)
-      // if still no related objects
+      // if we *still* didn't get any related messages, it must not have any
       else if (!richMsg.hasOwnProperty('related')) { callback(null, richMsg) }
       else {
         exports.getRevisions(ssb, richMsg, function(err, revisions) {
@@ -460,62 +460,11 @@ exports.getLatestRevision = function (ssb, thread, callback) {
         })
       }
     })
-  } else if (!msg.hasOwnProperty('related')) {
-    callback(null, msg)
   } else {
     exports.getRevisions(ssb, msg, function(err, revisions) {
       if (err) callback(err)
       callback(null, revisions[0])
     })
-  }
-}
-
-exports.createRevisionLog = function (ssb, msg, callback) {
-  // gets the previous revisions of a msg, going back to root
-  // puts the keys back
-  var msgKey = msg.key
-  var revisionsThread = []
-  up()
-  function up () {
-    ssb.get(msgKey, function (err, msg) {
-      if (err)
-        return callback(err)
-
-      // not found? finish here
-      if (!msg)
-        return finish()
-
-      // decrypt as needed
-      msg.plaintext = (typeof msg.content != 'string')
-      if (msg.plaintext) return next()
-      var decrypted = ssb.private.unbox(msg.content, next)
-      if (decrypted) next(null, decrypted) // handle sync calling signature
-      function next (err, decrypted) {
-        if (decrypted)
-          msg.content = decrypted
-
-        revisionsThread.push({key: msgKey, value: msg})
-
-        // revision link? ascend
-        if (mlib.link(msg.content.revisionBranch, 'msg')) {
-          msgKey = mlib.link(msg.content.revisionBranch).link
-          return up()
-        }
-
-        // root link? go straight to that
-        if (mlib.link(msg.content.revisionRoot, 'msg')) {
-          msgKey = mlib.link(msg.content.revisionRoot).link
-          return finish()
-        }
-
-
-        // topmost, finish
-        finish()
-      }
-    })
-  }
-  function finish () {
-    callback(null, revisionsThread)
   }
 }
 
@@ -542,36 +491,4 @@ function removeThreadDuplicates(threadArr) {
     uniqFlatThread.push(threadArr.find(function(t) { return uniqKeys[item] === t.key }))
   }
   return uniqFlatThread
-}
-
-function isNewerRevision(msg, rev) {
-  // more explicit check of revision relationship than above
-  var root = mlib.link(rev.root)
-  const relMsg       = (rev.value.content)
-  const isEdit       = (relMsg.type === 'post-edit')
-  const editsThis    = (relMsg.revisionRoot === relMsg.revisionBranch === msg.key)
-  const sameAuthor   = (rev.value.author === msg.value.author)
-  const isNewer      = (rev.value.sequence > msg.value.sequence)
-
-  return isEdit && editsThis && (sameAuthor) && isNewer
-}
-
-function traverseRelatedEdits(msg, callback) {
-  var latestRev = msg
-  if (latestRev.hasOwnProperty('related')) {
-    latestRev.related.forEach(function (relatedMsg) {
-      if (isNewerRevision(latestRev, relatedMsg)) {
-        if (latestRev.related.indexOf(relatedMsg) === latestRev.related.length - 1){
-          latestRev = traverseRelatedEdits(relatedMsg)
-        } else {
-          latestRev = relatedMsg
-        }
-      }
-    })
-  }
-  if (callback instanceof Function) {
-    callback(null, latestRev) // asynchronous case
-  } else {
-    return latestRev // synchronous case
-  }
 }
