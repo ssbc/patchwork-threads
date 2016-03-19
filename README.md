@@ -57,7 +57,4 @@ threadlib.getRevisions(ssb, thread, callback)
 
 // get the latest revision of an existing message
 threadlib.getLatestRevision(ssb, msg, callback)
-
-// produces the previous revisions of a msg going back to the original msg
-threadlib.createRevisionLog(ssb, msg, cb)
 ```

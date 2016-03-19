@@ -2,11 +2,6 @@ var mlib = require('ssb-msgs')
 var pull = require('pull-stream')
 var multicb = require('multicb')
 
-// shim for array.includes from es6
-Array.prototype.includes = function(item) {
-  return this.indexOf(item) !== -1
-}
-
 exports.fetchThreadRootID = function (ssb, mid, cb) {
   mid = (mid && typeof mid == 'object') ? mid.key : mid
   up()
@@ -137,7 +132,7 @@ exports.flattenThread = function (thread) {
     addedIds.add(msg.key)
   }
   function flattenAndReorderReplies (msg) {
-    if (thingsThatArePosts.includes(msg.value.content.type) &&
+    if (includes(thingsThatArePosts, msg.value.content.type) &&
         isaReplyTo(msg, thread)) {
       insertReply(msg)
       ;(msg.related||[]).forEach(flattenAndReorderReplies)
@@ -159,7 +154,7 @@ exports.flattenThread = function (thread) {
        if (addedIds.has(msg.key))
          return // skip duplicates
        // insert if a mention to its parent
-       if (thingsThatArePosts.includes(msg.value.content.type) &&
+       if (includes(thingsThatArePosts, msg.value.content.type) &&
            isaMentionTo(msg, parent))
          insertMention(msg, parent.key)
      })
@@ -491,4 +486,8 @@ function removeThreadDuplicates(threadArr) {
     uniqFlatThread.push(threadArr.find(function(t) { return uniqKeys[item] === t.key }))
   }
   return uniqFlatThread
+}
+
+function includes(array, item) {
+  return array.indexOf(item > -1)
 }
