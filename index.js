@@ -65,9 +65,12 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
 
   thread.forEach(function (thisMsg) { 
     // we don't *need* to get the latest revision of an edit, it's included
-    // already
+    // already...
     if (thisMsg.value.content.type === 'post') {
       exports.getLatestRevision(ssb, thisMsg, callbackAggregator())
+    } else if (thisMsg.value.content.type !== 'post-edit') {
+      // ...so we ignore post-edits and let everything else pass through
+      passthru(thisMsg, callbackAggregator)
     }
   })
   
@@ -490,4 +493,9 @@ function removeThreadDuplicates(threadArr) {
 
 function includes(array, item) {
   return array.indexOf(item > -1)
+}
+
+function passthru(output, callback) {
+  // passes output without error to callback
+  callback(null, output)
 }
