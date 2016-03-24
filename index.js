@@ -61,20 +61,24 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
 exports.reviseFlatThread = function(ssb, thread, callback) {
   // function that calls getLatestRevision on each of the elements of a flat
   // thread, and collects them up into one callback.
-  var callbackAggregator = multicb({pluck: 1})
+  var done = multicb({pluck: 1})
 
-  thread.forEach(function (thisMsg) { 
-    // we don't *need* to get the latest revision of an edit, it's included
-    // already...
-    if (thisMsg.value.content.type === 'post') {
-      exports.getLatestRevision(ssb, thisMsg, callbackAggregator())
-    } else if (thisMsg.value.content.type !== 'post-edit') {
-      // ...so we ignore post-edits and let everything else pass through
-      passthru(thisMsg, callbackAggregator)
+  thread.forEach(function (msg) { 
+    if (!msg.value) {
+      // non messages, keep
+      passthru(msg, done())
+    } else if (msg.value.content.type === 'post') {
+      // post, get latest
+      exports.getLatestRevision(ssb, msg, done())
+    } else if (msg.value.content.type === 'post-edit') {
+      // filter out
+    } else {
+      // other messages, keep
+      passthru(msg, done())
     }
   })
   
-  callbackAggregator(function (err, results) {
+  done(function (err, results) {
     if (err) {
       callback(err)
     } else {
