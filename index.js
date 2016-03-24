@@ -58,6 +58,31 @@ exports.getPostThread = function (ssb, mid, opts, cb) {
   })
 }
 
+exports.reviseFlatThread = function(ssb, thread, callback) {
+  // function that calls getLatestRevision on each of the elements of a flat
+  // thread, and collects them up into one callback.
+  var callbackAggregator = multicb({pluck: 1})
+
+  thread.forEach(function (thisMsg) { 
+    // we don't *need* to get the latest revision of an edit, it's included
+    // already...
+    if (thisMsg.value.content.type === 'post') {
+      exports.getLatestRevision(ssb, thisMsg, callbackAggregator())
+    } else if (thisMsg.value.content.type !== 'post-edit') {
+      // ...so we ignore post-edits and let everything else pass through
+      passthru(thisMsg, callbackAggregator)
+    }
+  })
+  
+  callbackAggregator(function (err, results) {
+    if (err) {
+      callback(err)
+    } else {
+      callback(null, results)
+    }
+  })
+}
+
 exports.flattenThread = function (thread) {
   // build the thread into a flat, and correctly ordered, list
   // this means 
@@ -65,6 +90,7 @@ exports.flattenThread = function (thread) {
   // 2. ordering the list such that replies are always after their immediate parent
   // 3. weaving in mentions in a second pass (if a mention is also a reply, we want that to take priority)
   // 4. detecting missing parents and weaving in "hey this is missing" objects
+  const thingsThatArePosts = ['post', 'post-edit'] // things we think are posts
   var related = (thread.related||[])
   var availableIds = new Set([thread.key].concat(related.map(function (m) { return m.key })))
   var addedIds = new Set([thread.key])
@@ -109,7 +135,8 @@ exports.flattenThread = function (thread) {
     addedIds.add(msg.key)
   }
   function flattenAndReorderReplies (msg) {
-    if (msg.value.content.type == 'post' && isaReplyTo(msg, thread)) {
+    if (includes(thingsThatArePosts, msg.value.content.type) &&
+        isaReplyTo(msg, thread)) {
       insertReply(msg)
       ;(msg.related||[]).forEach(flattenAndReorderReplies)
     }
@@ -127,12 +154,13 @@ exports.flattenThread = function (thread) {
   }
   function weaveMentions (parent) {
     ;(parent.related||[]).forEach(function (msg) { 
-      if (addedIds.has(msg.key))
-        return // skip duplicates
-      // insert if a mention to its parent
-      if (msg.value.content.type == 'post' && isaMentionTo(msg, parent))
-        insertMention(msg, parent.key)
-    })
+       if (addedIds.has(msg.key))
+         return // skip duplicates
+       // insert if a mention to its parent
+       if (includes(thingsThatArePosts, msg.value.content.type) &&
+           isaMentionTo(msg, parent))
+         insertMention(msg, parent.key)
+     })
   }
 
   function insertMissingParent (parentKey, childKey) {
@@ -389,6 +417,58 @@ exports.getLastThreadPost = function (thread) {
   return msg
 }
 
+
+/* post revision utils */
+
+exports.getRevisions = function(ssb, thread, callback) {
+  function collectRevisions(thread, callback) {
+    // this function walks the revisions of a given thread, collecting them up
+    // asyncly
+    var thredits = thread.related
+      .filter(function(relatedMsg) { return isaRevisionTo(relatedMsg, thread) })
+    thredits = removeThreadDuplicates(thredits)
+      .sort(function(msgA, msgB) {
+        return msgB.value.sequence - msgA.value.sequence
+      })
+    callback(null, thredits.concat(thread).filter(Boolean))
+  }
+            
+
+  if (!thread.hasOwnProperty('related')) { 
+    // if the thread doesn't have its related objects,fetch them
+    ssb.relatedMessages({id: thread.key, count: true}, function(err, enrichedThread) {
+      if (err) callback (err)
+      // if still no related objects
+      else if (!enrichedThread.hasOwnProperty('related')) callback(null, [])
+      else collectRevisions(enrichedThread, callback)
+    })
+  } else {
+    collectRevisions(thread, callback)
+  }  
+}
+
+exports.getLatestRevision = function (ssb, thread, callback) {
+  var msg = thread
+  if (!msg.hasOwnProperty('related')) {
+    ssb.relatedMessages({id: msg.key, count: true}, function(err, richMsg) {
+      if (err) callback (err)
+      // if we *still* didn't get any related messages, it must not have any
+      else if (!richMsg.hasOwnProperty('related')) { callback(null, richMsg) }
+      else {
+        exports.getRevisions(ssb, richMsg, function(err, revisions) {
+          if (err) callback(err)
+          callback(null, revisions[0])
+        })
+      }
+    })
+  } else {
+    exports.getRevisions(ssb, msg, function(err, revisions) {
+      if (err) callback(err)
+      callback(null, revisions[0])
+    })
+  }
+}
+
 function isaReplyTo (a, b) {
   var rels = mlib.relationsTo(a, b)
   return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
@@ -396,4 +476,29 @@ function isaReplyTo (a, b) {
 
 function isaMentionTo (a, b) {
   return mlib.relationsTo(a, b).indexOf('mentions') >= 0
+}
+
+function isaRevisionTo (a, b) {
+  var rels = mlib.relationsTo(a, b)
+  return rels.indexOf('revisionRoot') >= 0 ||
+    rels.indexOf('revisionBranch') >= 0
+}
+
+function removeThreadDuplicates(threadArr) {
+  // remove duplicates by converting keys into a set
+  const uniqKeys = Array.from(new Set(threadArr.map(function(t) { return t.key})))
+  var uniqFlatThread = []
+  for (var item in uniqKeys) {
+    uniqFlatThread.push(threadArr.find(function(t) { return uniqKeys[item] === t.key }))
+  }
+  return uniqFlatThread
+}
+
+function includes(array, item) {
+  return array.indexOf(item > -1)
+}
+
+function passthru(output, callback) {
+  // passes output without error to callback
+  callback(null, output)
 }
