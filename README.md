@@ -17,7 +17,7 @@ threadlib.getParentPostThread (ssb, mid, opts, cb)
 // get a flattened msg-list of the thread, ready for rendering
 threadlib.flattenThread (thread)
 
-// replace each msg in a flattened thread with its latest revision
+// replace each msg content in a flattened thread with its latest revision
 threadlib.reviseFlatThread(ssb, thread, cb)
 
 // get top-level thread structure (no replies of replies)

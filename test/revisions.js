@@ -308,9 +308,9 @@ tape('reviseFlatThread returns the original message if only one is present',
     })
   })
 
-tape('reviseFlatThread returns the latest revision of every member of a thread', 
+tape('reviseFlatThread returns the latest text of every member of a thread', 
   function(t) {
-    t.plan(9)
+    t.plan(5)
     
     var db = sublevel(level('test-patchwork-threads-revise-every-msg', {
       valueEncoding: defaults.codec
@@ -365,31 +365,19 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
                           
                           var flatThread = threadlib.flattenThread(thread)
                           
-                          // get each of the revisions manually
-                          var revisionsCallback = multicb({pluck: 1})
-                          threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
-                          threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
-                          threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
-                          threadlib.getLatestRevision(ssb, msgB2, revisionsCallback())
 
                           threadlib.reviseFlatThread(
                             ssb, flatThread, 
                             function(err, newFlatThread) {
                               if (err) throw err
-                              
-                              revisionsCallback(function(err, latestRevs) {
-                                if (err) throw err
-                                t.equal(newFlatThread.length, 4)
-                                t.equal(newFlatThread[0].key, latestRevs[0].key)
-                                t.equal(newFlatThread[1].key, latestRevs[1].key)
-                                t.equal(newFlatThread[2].key, latestRevs[2].key)
-                                t.equal(newFlatThread[3].key, latestRevs[3].key)
-                                t.equal(newFlatThread[0].value.content.text, 'a')
-                                t.equal(newFlatThread[1].value.content.text, 'b-revised')
-                                t.equal(newFlatThread[2].value.content.text, 'c-revised')
-                                t.equal(newFlatThread[3].value.content.text, 'b2')
-                                t.end()
-                              })
+                            
+                              if (err) throw err
+                              t.equal(newFlatThread.length, 4)
+                              t.equal(newFlatThread[0].value.content.text, 'a')
+                              t.equal(newFlatThread[1].value.content.text, 'b-revised')
+                              t.equal(newFlatThread[2].value.content.text, 'c-revised')
+                              t.equal(newFlatThread[3].value.content.text, 'b2')
+                              t.end()
                             })
                         })                                            
                       })
@@ -400,9 +388,54 @@ tape('reviseFlatThread returns the latest revision of every member of a thread',
     })
   })
 
+tape('reviseFlatThread returns the latest text and mentions', function(t) {
+  t.plan(3)
+  
+  var db = sublevel(level('test-patchwork-threads-revise-every-msg-mentions', {
+    valueEncoding: defaults.codec
+  }))
+  var ssb = SSB(db, defaults)
+
+  var alice = ssb.createFeed(ssbKeys.generate())
+  var bob = ssb.createFeed(ssbKeys.generate())
+  var carla = ssb.createFeed(ssbKeys.generate())
+
+  // begin callback hellpyramid
+  // load test thread into ssb
+  alice.add({ type: 'post', text: 'a', mentions: [bob.id] }, function (err, msgA) {
+    if (err) throw err
+
+    carla.add({
+      type: 'post-edit',
+      text: 'a-revised', 
+      mentions: [carla.id],
+      revisionRoot: msgA.key,
+      revisionBranch: msgA.key
+    }, function(err, revisionC) {
+
+      // fetch and flatten the complete unedited thread
+      threadlib.getPostThread(ssb, msgA.key, {}, function (err, thread) {
+        if (err) throw err
+        
+        var flatThread = threadlib.flattenThread(thread)
+        
+        threadlib.reviseFlatThread(ssb, flatThread, function(err, newFlatThread) {
+          if (err) throw err
+        
+          if (err) throw err
+          t.equal(newFlatThread.length, 1)
+          t.equal(newFlatThread[0].value.content.text, 'a-revised')
+          t.equal(newFlatThread[0].value.content.mentions[0], carla.id)
+          t.end()
+        })
+      })                                            
+    })
+  })
+})
+
 tape('reviseFlatThread returns properly even if root is revised', 
   function(t) {
-    t.plan(7)
+    t.plan(4)
     
     var db = sublevel(level('test-patchwork-threads-revise-root', {
       valueEncoding: defaults.codec
@@ -454,25 +487,14 @@ tape('reviseFlatThread returns properly even if root is revised',
                                 
                                 var flatThread = threadlib.flattenThread(thread)
                                 
-                                // get each of the revisions manually
-                                var revisionsCallback = multicb({pluck: 1})
-                                threadlib.getLatestRevision(ssb, msgA, revisionsCallback())
-                                threadlib.getLatestRevision(ssb, msgB, revisionsCallback())
-                                threadlib.getLatestRevision(ssb, msgC, revisionsCallback())
-                                
                                 threadlib.reviseFlatThread(
                                   ssb, flatThread, 
                                   function(err, newFlatThread) {
-                                    revisionsCallback(function(err, latestRevs) {
                                       t.equal(newFlatThread.length, 3)
-                                      t.equal(newFlatThread[0].key, latestRevs[0].key)
-                                      t.equal(newFlatThread[1].key, latestRevs[1].key)
-                                      t.equal(newFlatThread[2].key, latestRevs[2].key)
                                       t.equal(newFlatThread[0].value.content.text, 'a-revised')
                                       t.equal(newFlatThread[1].value.content.text, 'b')
                                       t.equal(newFlatThread[2].value.content.text, 'c-revised')
                                       t.end()
-                                    })
                                   })
                               })                                            
                             })

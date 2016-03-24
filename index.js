@@ -69,7 +69,14 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
       passthru(msg, done())
     } else if (msg.value.content.type === 'post') {
       // post, get latest
-      exports.getLatestRevision(ssb, msg, done())
+      var cb = done()
+      exports.getLatestRevision(ssb, msg, function (err, editMsg) {
+        if (editMsg && editMsg.key !== msg.key) {
+          msg.value.content.text = editMsg.value.content.text
+          msg.value.content.mentions = editMsg.value.content.mentions
+        }
+        cb(null, msg)
+      })
     } else if (msg.value.content.type === 'post-edit') {
       // filter out
     } else {
