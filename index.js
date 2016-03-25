@@ -64,10 +64,7 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
   var done = multicb({pluck: 1})
 
   thread.forEach(function (msg) { 
-    if (!msg.value) {
-      // non messages, keep
-      passthru(msg, done())
-    } else if (msg.value.content.type === 'post') {
+    if (msg.value && msg.value.content.type === 'post') {
       // post, get latest
       var cb = done()
       exports.getLatestRevision(ssb, msg, function (err, editMsg) {
@@ -77,8 +74,6 @@ exports.reviseFlatThread = function(ssb, thread, callback) {
         }
         cb(null, msg)
       })
-    } else if (msg.value.content.type === 'post-edit') {
-      // filter out
     } else {
       // other messages, keep
       passthru(msg, done())
