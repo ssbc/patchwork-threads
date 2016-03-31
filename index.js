@@ -179,14 +179,14 @@ exports.flattenThread = function (thread) {
 
     if (i === 0) {
       // topmost post in our thread
-      var root = mlib.link(msg.value.content.root, 'msg')
+      var root = mlib.link(msg.value && msg.value.content.root, 'msg')
       if (root && !addedIds.has(root.link)) {
         // user may be looking at a reply - just display a link
         msgs.unshift({ key: root.link, isLink: true })
       }
     } else {
       // one of the replies
-      var branch = mlib.link(msg.value.content.branch, 'msg')
+      var branch = mlib.link(msg.value && msg.value.content.branch, 'msg')
       if (branch && !addedIds.has(branch.link)) {
         // if the parent isnt somewhere in the thread, then we dont have it
         insertMissingParent(branch.link, msg.key)
