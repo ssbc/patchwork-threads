@@ -469,16 +469,40 @@ exports.getLatestRevision = function (ssb, thread, callback) {
   }
 }
 
-function isaReplyTo (a, b) {
+exports.countReplies = function (thread, filter) {
+  if (!thread.related)
+    return 0
+  var n = 0
+  var counted = {}
+  thread.related.forEach(function (r) {
+    if (!r.value || !r.value.content || !isaReplyTo(r, thread)) // only replies
+      return
+    if (counted[r.key]) // only count each message once
+      return
+    if (filter && !filter(r)) // run filter
+      return
+    n++
+    counted[r.key] = true
+  })
+  return n
+}
+
+var isaReplyTo =
+exports.isaReplyTo =
+function (a, b) {
   var rels = mlib.relationsTo(a, b)
   return rels.indexOf('root') >= 0 || rels.indexOf('branch') >= 0
 }
 
-function isaMentionTo (a, b) {
+var isaMentionTo =
+exports.isaMentionTo =
+function (a, b) {
   return mlib.relationsTo(a, b).indexOf('mentions') >= 0
 }
 
-function isaRevisionTo (a, b) {
+var isaRevisionTo =
+exports.isaRevisionTo =
+function (a, b) {
   var rels = mlib.relationsTo(a, b)
   return rels.indexOf('revisionRoot') >= 0 ||
     rels.indexOf('revisionBranch') >= 0

@@ -57,4 +57,17 @@ threadlib.getRevisions(ssb, thread, callback)
 
 // get the latest revision of an existing message
 threadlib.getLatestRevision(ssb, msg, callback)
+
+// count the number of replies in a thread
+// - filter(msg): optional additional filter, return bool
+threadlib.countReplies(thread, [filter])
+
+// is `a` a reply to `b`?
+threadlib.isaReplyTo(a, b)
+
+// does `a` mention `b`?
+threadlib.isaMentionTo(a, b)
+
+// does `a` revise `b`?
+thread.lib.isaRevisionTo(a, b)
 ```
